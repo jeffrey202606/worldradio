@@ -1,0 +1,3892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="全球电台 - 基于3D地球的世界广播播放器，覆盖60+国家/地区，支持搜索、收藏、EQ均衡器等功能">
+  <meta name="keywords" content="全球电台,网络收音机,世界广播,在线电台,3D地球,CesiumJS">
+  <meta name="author" content="World Radio">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#0a0f1c">
+  <!-- Open Graph -->
+  <meta property="og:title" content="全球电台 - World Radio">
+  <meta property="og:description" content="基于3D地球的世界广播播放器，覆盖60+国家/地区，支持搜索、收藏、EQ均衡器等功能">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="">
+  <!-- Favicon (SVG radio icon) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230a1628' stroke='%2300D4FF' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%2300D4FF'/%3E%3Cpath d='M32 8 A24 24 0 0 1 56 32' fill='none' stroke='%2300D4FF' stroke-width='2.5' opacity='0.8'/%3E%3Cpath d='M32 14 A18 18 0 0 1 50 32' fill='none' stroke='%2300D4FF' stroke-width='2' opacity='0.6'/%3E%3Cpath d='M32 8 A24 24 0 0 0 8 32' fill='none' stroke='%237B68EE' stroke-width='2.5' opacity='0.8'/%3E%3Cpath d='M32 14 A18 18 0 0 0 14 32' fill='none' stroke='%237B68EE' stroke-width='2' opacity='0.6'/%3E%3C/svg%3E">
+  <!-- CSP -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cesium.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cesium.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://a.tile.openstreetmap.fr https://*.tianditu.gov.cn https://raw.githubusercontent.com; connect-src 'self' https://*.api.radio-browser.info https://*.tianditu.gov.cn https://tile.openstreetmap.org http: https: blob: data:; worker-src 'self' blob:; media-src 'self' blob: data: *;">
+  <title>🌍 全球电台</title>
+  <!-- CesiumJS CDN -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.104/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.104/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <!-- hls.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #000; color: #E0E6ED; font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; }
+    
+    #app { display: grid; grid-template-rows: 56px 1fr 60px; grid-template-columns: 1fr; width: 100vw; height: 100vh; position: relative; gap: 6px; padding: 10px 0; box-sizing: border-box; z-index: 2; }
+    
+    #topbar { 
+      display: flex; 
+      align-items: center; 
+      gap: 20px; 
+      padding: 0 22px; 
+      margin: 0 10px; 
+      background: rgba(5,8,16,0.98); 
+      backdrop-filter: blur(16px) saturate(1.2); 
+      border: 1px solid rgba(255,255,255,0.04); 
+      border-radius: 14px; 
+      z-index: 1000;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #0a1628 0%, #162447 100%); display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 0 0 2px rgba(0,212,255,0.3), 0 0 16px rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.2); position: relative; overflow: hidden; }
+    .logo-icon::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, transparent 40%, rgba(0,212,255,0.15) 100%); }
+    .logo-text { font-size: 16px; font-weight: 300; color: rgba(255,255,255,0.85); letter-spacing: 3px; text-transform: uppercase; }
+    .logo-text span { background: linear-gradient(90deg, #00D4FF, #7B68EE); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; }
+    
+    
+    
+    /* 大洲导航条 */
+    .continent-nav { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+    .nav-link {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.4);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.3s ease;
+      letter-spacing: 0.5px;
+      border-radius: 6px;
+    }
+    .nav-link:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.04); }
+    .nav-link.active { color: #fff; }
+    .nav-link.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 20%;
+      width: 60%;
+      height: 2px;
+      background: linear-gradient(90deg, #00D4FF, #7B68EE);
+      border-radius: 1px;
+      animation: navUnderline 0.3s ease;
+    }
+    @keyframes navUnderline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    
+    /* 顶栏图标按钮 */
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.25s;
+    }
+    .icon-btn:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.12);
+    }
+    .icon-btn:active { transform: scale(0.9); }
+    
+    
+    
+    /* Cesium 地球容器 - 居中显示 */
+    #globe-container { 
+      grid-row: 2; 
+      position: relative; 
+      overflow: hidden; 
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin: 0 10px;
+    }
+    #cesiumContainer { 
+      width: 100%; 
+      height: 100%; 
+      border-radius: 14px;
+    }
+    
+    /* 隐藏 Cesium 默认UI */
+    .cesium-viewer-bottom { display: none !important; }
+    .cesium-viewer-toolbar { display: none !important; }
+    .cesium-viewer-animationContainer { display: none !important; }
+    .cesium-viewer-timelineContainer { display: none !important; }
+    .cesium-viewer-fullscreenContainer { display: none !important; }
+    .cesium-credit-textContainer { display: none !important; }
+    .cesium-credit-logoContainer { display: none !important; }
+    
+    #loading-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(10,15,28,0.95); z-index: 100; border-radius: 14px; }
+    #loading-overlay.hidden { display: none; }
+    #loading-overlay .loader-icon { font-size: 80px; animation: spin 3s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    #loading-overlay .loading-text { font-size: 14px; color: #A8B5C4; margin-top: 16px; }
+    #loading-overlay .error-text { font-size: 12px; color: #ff4d6d; margin-top: 8px; max-width: 300px; text-align: center; }
+    
+    .panel { 
+      background: rgba(5,8,16,0.98); 
+      backdrop-filter: blur(16px) saturate(1.2); 
+      border: 1px solid rgba(255,255,255,0.04); 
+      border-radius: 14px; 
+      display: flex; 
+      flex-direction: column; 
+      overflow: hidden; 
+      z-index: 1000;
+      box-shadow: 4px 0 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+      position: relative;
+    }
+    .panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+    .panel > * { position: relative; z-index: 1; }
+    /* unified panel - see below */
+    
+    .tab-bar { 
+      display: grid; 
+      grid-template-columns: repeat(3, 1fr); 
+      gap: 4px; 
+      padding: 10px 12px; 
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .tab-btn { 
+      padding: 10px 8px; 
+      font-size: 12px; 
+      color: rgba(255,255,255,0.35); 
+      cursor: pointer; 
+      border-radius: 8px; 
+      text-align: center; 
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); 
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      position: relative;
+    }
+    .tab-btn:hover { 
+      color: #C8D4E0; 
+      background: rgba(255,255,255,0.05); 
+    }
+    .tab-btn.active { 
+      color: #fff; 
+      background: rgba(255,255,255,0.06);
+    }
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 25%;
+      width: 50%;
+      height: 2px;
+      background: linear-gradient(90deg, #00D4FF, #7B68EE);
+      border-radius: 1px;
+    }
+    
+    .panel-section { flex: 1; overflow-y: auto; padding: 8px 10px; scroll-behavior: smooth; }
+    .panel-section::-webkit-scrollbar { width: 3px; }
+    .panel-section::-webkit-scrollbar-track { background: transparent; }
+    .panel-section::-webkit-scrollbar-thumb { 
+      background: linear-gradient(180deg, rgba(0,212,255,0.2), rgba(123,104,238,0.2)); 
+      border-radius: 3px;
+    }
+    .panel-section::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(0,212,255,0.4), rgba(123,104,238,0.4));
+    }
+    .panel-section { scrollbar-width: thin; scrollbar-color: rgba(0,212,255,0.2) transparent; }
+    
+    .station-item { 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      padding: 10px 12px; 
+      background: rgba(255,255,255,0.025); 
+      border-radius: 12px; 
+      margin-bottom: 4px; 
+      cursor: pointer; 
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); 
+      border: 1px solid rgba(255,255,255,0.03);
+      position: relative;
+      overflow: hidden;
+    }
+    .station-item::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: linear-gradient(180deg, #00D4FF, #7B68EE);
+      border-radius: 0 3px 3px 0;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .station-item:hover { 
+      background: rgba(255,255,255,0.06); 
+      border-color: rgba(0,212,255,0.12);
+      transform: translateX(2px);
+    }
+    .station-item:hover::before { opacity: 0.5; }
+    .station-item.active { 
+      background: rgba(0,212,255,0.08);
+      border-color: rgba(0,212,255,0.18);
+      box-shadow: 0 2px 12px rgba(0,212,255,0.08);
+    }
+    .station-item.active::before { opacity: 1; animation: slideIndicator 0.3s ease; }
+    @keyframes slideIndicator { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+    .station-item .icon { 
+      width: 36px; 
+      height: 36px; 
+      border-radius: 9px; 
+      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,104,238,0.2));
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-size: 16px; 
+      flex-shrink: 0;
+      transition: all 0.3s;
+    }
+    .station-item:hover .icon {
+      background: linear-gradient(135deg, rgba(0,212,255,0.3), rgba(123,104,238,0.3));
+      transform: scale(1.05);
+    }
+    .station-item .info { flex: 1; min-width: 0; }
+    .station-item .name { 
+      font-size: 13.5px; 
+      font-weight: 600; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      color: #E8EEF4;
+      margin-bottom: 3px;
+    }
+    .station-item .meta { 
+      font-size: 10.5px; 
+      color: rgba(255,255,255,0.35); 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis;
+      letter-spacing: 0.2px;
+    }
+    
+    .filter-card { 
+      margin: 0; 
+      padding: 0; 
+      background: transparent; 
+      border-radius: 0;
+    }
+    .filter-header-title { 
+      font-size: 14px; 
+      font-weight: 700; 
+      margin-bottom: 0; 
+      color: #E8EEF4;
+      letter-spacing: 0.3px;
+    }
+    .chip-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+    .chip { padding: 6px 14px; border-radius: 20px; font-size: 11px; cursor: pointer; border: 1px solid rgba(255,255,255,0.06); color: #8A99AB; background: rgba(255,255,255,0.04); transition: all 0.3s; }
+    .chip:hover { border-color: rgba(0,212,255,0.3); color: #00D4FF; }
+    .chip.active { border-color: rgba(0,212,255,0.5); color: #fff; background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(123,104,238,0.12)); }
+    
+    .result-count { 
+      font-size: 11px; 
+      color: #6B7F92; 
+      padding: 0;
+      margin-top: 6px;
+      letter-spacing: 0.2px;
+    }
+    .result-count strong { 
+      color: #00D4FF; 
+      font-weight: 700;
+      font-size: 13px;
+    }
+    
+    /* 右侧面板头部 - Premium */
+    .right-panel-header {
+      padding: 16px 18px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.01);
+    }
+    .right-panel-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .station-count-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(0,212,255,0.08);
+      border: 1px solid rgba(0,212,255,0.12);
+      border-radius: 20px;
+      font-size: 12px;
+      color: #00D4FF;
+      font-weight: 600;
+    }
+    .station-count-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #00D4FF;
+      animation: liveDotPulse 2s ease-in-out infinite;
+    }
+    @keyframes liveDotPulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+    
+    /* ================================
+       播放器增强样式 - P0 Core
+       ================================ */
+    #player-bar { 
+      display: flex; 
+      flex-direction: row;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 18px; 
+      background: rgba(5,8,16,0.98); 
+      backdrop-filter: blur(16px) saturate(1.2); 
+      border: 1px solid rgba(255,255,255,0.04); 
+      border-radius: 14px; 
+      z-index: 1000;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03);
+      margin: 0 10px;
+    }
+    #player-bar.playing {
+      box-shadow: 0 -4px 30px rgba(0,0,0,0.4), 0 0 40px rgba(0,212,255,0.06), 0 0 80px rgba(0,212,255,0.03), inset 0 1px 0 rgba(0,212,255,0.05);
+      border-color: rgba(0,212,255,0.1);
+    }
+    
+    .player-top-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+    
+    .now-playing { 
+      display: flex; 
+      align-items: center; 
+      gap: 8px; 
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .now-playing-cover { 
+      width: 40px; 
+      height: 40px; 
+      border-radius: 10px; 
+      background: linear-gradient(135deg, #00D4FF, #7B68EE); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-size: 18px; 
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(0,212,255,0.2);
+      transition: all 0.3s;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .now-playing-cover:hover {
+      transform: scale(1.06);
+      box-shadow: 0 6px 24px rgba(0,212,255,0.35);
+    }
+    
+    .now-playing-cover img {
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      object-fit: contain;
+      background: transparent !important;
+    }
+    
+    .now-playing-cover.playing {
+      animation: coverGlow 3s ease-in-out infinite;
+    }
+    @keyframes coverGlow {
+      0%, 100% { box-shadow: 0 4px 16px rgba(0,212,255,0.25); }
+      50% { box-shadow: 0 4px 24px rgba(0,212,255,0.45), 0 0 20px rgba(0,212,255,0.1); }
+    }
+    
+    .now-playing-cover.loading {
+      animation: none;
+    }
+    
+    
+    .now-playing-info { 
+      flex: 1; 
+      min-width: 0; 
+    }
+    
+    .now-playing-name { 
+      font-size: 13.5px; 
+      font-weight: 600; 
+      color: rgba(255,255,255,0.88); 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .now-playing-name .meta-inline {
+      font-size: 10.5px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.3);
+    }
+    
+    .now-playing-meta { display: none; }
+    
+    .now-playing-meta .separator {
+      color: rgba(255,255,255,0.15);
+    }
+    
+    .station-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(0,212,255,0.1);
+      color: #00D4FF;
+    }
+    
+    .station-status.error {
+      background: rgba(255,77,109,0.1);
+      color: #ff4d6d;
+    }
+    
+    .station-status.buffering {
+      background: rgba(255,193,7,0.1);
+      color: #ffc107;
+    }
+    
+    /* progress bar removed */
+    /* 波形可视化增强 */
+    .waveform-visualizer { 
+      flex: 1; 
+      height: 34px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: stretch;
+      gap: 2px; 
+      background: rgba(255,255,255,0.03); 
+      border-radius: 8px; 
+      padding: 4px 6px; 
+      max-width: 400px;
+      min-width: 120px;
+    }
+    
+    .wave-bar { 
+      flex: 1;
+      min-height: 3px;
+      border-radius: 2px; 
+      transition: height 0.06s ease-out;
+      transform-origin: center;
+    }
+    /* waveform unified cyan gradient */
+    .wave-bar { background: linear-gradient(to top, rgba(0,212,255,0.3), rgba(0,212,255,0.9)); }
+    .wave-bar:nth-child(-n+8) { background: linear-gradient(to top, rgba(0,212,255,0.4), rgba(0,180,255,0.95)); }
+    .wave-bar:nth-child(n+9):nth-child(-n+16) { background: linear-gradient(to top, rgba(0,200,255,0.35), rgba(100,180,255,0.85)); }
+    .wave-bar:nth-child(n+17):nth-child(-n+24) { background: linear-gradient(to top, rgba(60,140,255,0.3), rgba(123,104,238,0.8)); }
+    .wave-bar:nth-child(n+25) { background: linear-gradient(to top, rgba(123,104,238,0.25), rgba(123,104,238,0.7)); }
+    
+    /* 播放控制增强 */
+    .play-controls { 
+      display: flex; 
+      align-items: center; 
+      gap: 6px; 
+    }
+    
+    .control-btn { 
+      width: 32px; 
+      height: 32px; 
+      border-radius: 8px; 
+      border: none; 
+      background: rgba(255,255,255,0.05); 
+      color: #E0E6ED; 
+      font-size: 13px; 
+      cursor: pointer; 
+      transition: all 0.3s; 
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .control-btn:hover { 
+      background: rgba(0,212,255,0.15); 
+      transform: scale(1.05);
+    }
+    .control-btn:active { transform: scale(0.92); transition: transform 0.1s; }
+    
+    .control-btn.secondary {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      font-size: 11px;
+      background: transparent;
+      opacity: 0.5;
+      transition: all 0.25s;
+    }
+    
+    .control-btn.secondary:hover {
+      background: rgba(255,255,255,0.06);
+      opacity: 1;
+    }
+    
+    .control-btn.primary { 
+      width: 40px; 
+      height: 40px; 
+      border-radius: 12px;
+      background: linear-gradient(135deg, #00D4FF, #7B68EE); 
+      color: #fff; 
+      font-size: 15px; 
+      box-shadow: 0 4px 14px rgba(0,212,255,0.3); 
+    }
+    
+    .control-btn.primary:hover { 
+      transform: scale(1.08); 
+      box-shadow: 0 8px 28px rgba(0,212,255,0.45);
+    }
+    .control-btn.primary.playing-btn {
+      animation: playBreathe 2.5s ease-in-out infinite;
+    }
+    @keyframes playBreathe {
+      0%, 100% { box-shadow: 0 4px 14px rgba(0,212,255,0.3); }
+      50% { box-shadow: 0 4px 20px rgba(0,212,255,0.5), 0 0 30px rgba(0,212,255,0.15); }
+    }
+    
+    .control-btn.active {
+      background: rgba(0,212,255,0.2);
+      color: #00D4FF;
+    }
+    
+    /* 音量控制增强 */
+    .volume-control { 
+      display: flex; 
+      align-items: center; 
+      gap: 6px; 
+      min-width: 100px;
+    }
+    
+    .volume-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: #E0E6ED;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .volume-btn:hover {
+      background: rgba(255,255,255,0.08);
+    }
+    
+    .volume-slider-wrapper {
+      position: relative;
+      width: 70px;
+      height: 4px;
+    }
+    
+    .volume-control input[type="range"] { 
+      width: 100%; 
+      height: 4px; 
+      -webkit-appearance: none;
+      appearance: none; 
+      background: rgba(255,255,255,0.1); 
+      border-radius: 3px; 
+      cursor: pointer;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .volume-control input[type="range"]::-webkit-slider-thumb { 
+      -webkit-appearance: none;
+      appearance: none; 
+      width: 12px; 
+      height: 12px; 
+      border-radius: 50%; 
+      background: #fff; 
+      cursor: pointer; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: transform 0.2s;
+    }
+    
+    .volume-control input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+    
+    .volume-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #00D4FF, #7B68EE);
+      border-radius: 3px;
+      z-index: 1;
+      pointer-events: none;
+    }
+    
+    .volume-percent {
+      font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      min-width: 24px;
+      text-align: right;
+      font-family: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Monaco, monospace;
+      font-weight: 500;
+      letter-spacing: -0.3px;
+    }
+    
+    /* 侧边面板 - 重新启用 */
+    #panel-left { 
+      display: flex !important; 
+      position: absolute;
+      left: 10px;
+      top: 80px;
+      width: 300px;
+      height: calc(100vh - 158px);
+      z-index: 1000;
+      animation: panelSlideLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    @keyframes panelSlideLeft {
+      from { opacity: 0; transform: translateX(-30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+
+    /* 分类筛选样式 - Premium */
+    .filter-section {
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .filter-section:last-child {
+      border-bottom: none;
+    }
+    .filter-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+      border-radius: 8px;
+      margin: 0 4px;
+    }
+    .filter-header:hover {
+      background: rgba(255,255,255,0.03);
+    }
+    .filter-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(0,212,255,0.7);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+    .filter-arrow {
+      font-size: 8px;
+      color: #5A6B7C;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-block;
+    }
+    .filter-section.collapsed .filter-arrow {
+      transform: rotate(-90deg);
+    }
+    .filter-body {
+      max-height: 200px;
+      overflow: hidden;
+      transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.35s ease;
+      padding: 0 4px 8px;
+    }
+    .filter-section.collapsed .filter-body {
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+    
+    .filter-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 2px 14px;
+    }
+    
+    .filter-chip {
+      padding: 6px 14px;
+      font-size: 11px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 20px;
+      color: #8A99AB;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-weight: 500;
+    }
+    
+    .filter-chip:hover {
+      background: rgba(0,212,255,0.08);
+      border-color: rgba(0,212,255,0.2);
+      color: #00D4FF;
+      transform: translateY(-1px);
+    }
+    
+    .filter-chip.active {
+      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,104,238,0.14));
+      border-color: rgba(0,212,255,0.45);
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(0,212,255,0.2);
+    }
+    
+    /* 加载状态指示器 - Premium */
+    .loading-stations {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      color: #8A99AB;
+    }
+    
+    .loading-spinner {
+      width: 36px;
+      height: 36px;
+      border: 2px solid rgba(0,212,255,0.1);
+      border-top: 2px solid #00D4FF;
+      border-right: 2px solid #7B68EE;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+    
+    .loading-text {
+      font-size: 12px;
+      color: #6B7F92;
+    }
+    
+    /* Premium Refresh Button */
+    .refresh-btn-wrap {
+      padding: 12px 16px 16px;
+    }
+    .refresh-btn {
+      width: 100%;
+      padding: 11px 16px;
+      background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(123,104,238,0.1));
+      border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 10px;
+      color: #00D4FF;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      letter-spacing: 0.3px;
+    }
+    .refresh-btn:hover {
+      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,104,238,0.16));
+      border-color: rgba(0,212,255,0.35);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(0,212,255,0.15);
+    }
+    .refresh-btn:active {
+      transform: translateY(0);
+    }
+    
+    /* 搜索框 - Premium */
+    /* Unified panel internal layout */
+    .panel-body {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #tab-filter {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    #tab-filter .search-box { flex-shrink: 0; }
+    #tab-filter .filter-section { flex-shrink: 0; }
+    #tab-filter .station-list-header { flex-shrink: 0; }
+    #station-list {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+    #station-list::-webkit-scrollbar { width: 3px; }
+    #station-list::-webkit-scrollbar-track { background: transparent; }
+    #station-list::-webkit-scrollbar-thumb { 
+      background: linear-gradient(180deg, rgba(0,212,255,0.2), rgba(123,104,238,0.2)); 
+      border-radius: 3px;
+    }
+    #station-list::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(0,212,255,0.4), rgba(123,104,238,0.4));
+    }
+    #station-list { scrollbar-width: thin; scrollbar-color: rgba(0,212,255,0.2) transparent; }
+    #tab-fav { flex: 1; overflow-y: auto; }
+    #tab-hist { flex: 1; overflow-y: auto; }
+    .unified-panel-footer {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-top: 1px solid rgba(255,255,255,0.03);
+      text-align: center;
+    }
+    .station-heart {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: #5A6B7C;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .station-heart:hover { color: #ff6b8a; transform: scale(1.25); }
+    .station-heart:active { transform: scale(0.85); transition: transform 0.08s; }
+    .station-heart.faved { color: #ff4d6d; text-shadow: 0 0 8px rgba(255,77,109,0.4); animation: heartPop 0.35s ease; }
+    @keyframes heartPop {
+      0% { transform: scale(0.6); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    .station-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px 8px;
+      border-top: 1px solid rgba(0,212,255,0.06);
+      background: rgba(255,255,255,0.01);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(12px);
+    }
+    .station-list-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(0,212,255,0.7);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+    .mini-refresh-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(0,212,255,0.1);
+      color: #6B7F92;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+    }
+    .mini-refresh-btn:hover {
+      background: rgba(0,212,255,0.1);
+      border-color: rgba(0,212,255,0.3);
+      color: #00D4FF;
+    }
+    .unified-panel-footer span {
+      font-size: 10px;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: 0.5px;
+    }
+    .unified-panel-footer strong {
+      color: rgba(0,212,255,0.6);
+      font-weight: 600;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+    /* Override station-item hover for edge-aligned panel */
+    #panel-left .station-item { border-radius: 10px; margin-bottom: 4px; padding: 9px 10px; }
+    #panel-left .station-item:hover { transform: none; }
+
+    .search-box {
+      padding: 14px 16px 10px;
+      position: relative;
+    }
+    
+    .search-wrapper {
+      position: relative;
+    }
+    
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #5A6B7D;
+      font-size: 14px;
+      pointer-events: none;
+      transition: color 0.3s;
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: 10px 12px 10px 36px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      color: #E0E6ED;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .search-input:focus {
+      border-color: rgba(0,212,255,0.35);
+      background: rgba(0,212,255,0.03);
+      box-shadow: 0 0 0 3px rgba(0,212,255,0.06);
+    }
+    
+    .search-input:focus ~ .search-icon {
+      color: #00D4FF;
+    }
+    
+    .search-input::placeholder {
+      color: #5A6B7D;
+      font-size: 12px;
+    }
+    
+    /* ================================================
+       新增功能样式
+       ================================================ */
+    
+    /* control-panel 已移除 */
+    
+    /* toggle-btn 已移除 */
+    
+    /* basemap-btn 已移除 - 仅保留航拍带地名底图 */
+    
+    /* 预设视角按钮 */
+    .preset-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .preset-btn { 
+      padding: 8px; 
+      background: rgba(255,255,255,0.04); 
+      border: 1px solid rgba(255,255,255,0.08); 
+      border-radius: 6px; 
+      font-size: 11px; 
+      color: #A8B5C4; 
+      cursor: pointer; 
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .preset-btn:hover { background: rgba(0,212,255,0.15); border-color: rgba(0,212,255,0.3); color: #00D4FF; }
+    
+    /* 信息指示器 - 右下角 */
+    .info-indicators { 
+      position: absolute; 
+      right: 20px; 
+      bottom: 20px; 
+      background: rgba(15,19,30,0.85); 
+      backdrop-filter: blur(16px); 
+      border: 1px solid rgba(255,255,255,0.06); 
+      border-radius: 10px; 
+      padding: 8px 12px; 
+      z-index: 1000;
+      font-size: 10px;
+      font-family: 'SF Mono', Monaco, monospace;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      pointer-events: none;
+    }
+    .info-item { margin-bottom: 4px; color: rgba(255,255,255,0.4); }
+    .info-item:last-child { margin-bottom: 0; }
+    .info-item strong { color: rgba(0,212,255,0.7); font-weight: 500; }
+    .scale-bar { 
+      height: 4px; 
+      background: linear-gradient(to right, #00D4FF, #7B68EE); 
+      border-radius: 2px; 
+      margin-top: 4px;
+      position: relative;
+    }
+    .scale-bar::before, .scale-bar::after {
+      content: '';
+      position: absolute;
+      width: 1px;
+      height: 8px;
+      background: #00D4FF;
+      top: -2px;
+    }
+    .scale-bar::before { left: 0; }
+    .scale-bar::after { right: 0; }
+    
+
+    
+    /* 电台信息提示框 */
+    .station-tooltip {
+      position: absolute;
+      display: none;
+      background: rgba(20,24,36,0.96);
+      backdrop-filter: blur(24px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 16px 18px;
+      z-index: 2000;
+      min-width: 230px;
+      max-width: 290px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.04);
+      pointer-events: none;
+    }
+    .station-tooltip.show {
+      display: block;
+    }
+    .tooltip-header {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .tooltip-name {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #E0E6ED;
+      margin-bottom: 4px;
+    }
+    .tooltip-country {
+      font-size: 11px;
+      color: #00D4FF;
+    }
+    .tooltip-info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tooltip-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      padding: 4px 0;
+    }
+    .tooltip-label {
+      color: #8A99AB;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tooltip-value {
+      color: #A8B5C4;
+      font-weight: 500;
+      text-align: right;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    /* bookmark-panel 已移除 */
+    
+    /* keyboard-hint 已移除 */
+    
+    /* Toast提示增强 */
+    .toast { position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%); padding: 10px 22px; background: rgba(20,24,36,0.95); backdrop-filter: blur(20px) saturate(1.5); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; color: rgba(255,255,255,0.8); font-size: 12px; z-index: 9999; animation: fadeInUp 0.25s ease; box-shadow: 0 8px 32px rgba(0,0,0,0.4); letter-spacing: 0.3px; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    
+    /* 面板折叠动画 - Premium */
+    .panel.collapsed-left { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+    .panel { transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease; }
+    
+    /* 可访问性焦点样式 */
+    button:focus-visible, input:focus-visible, .nav-link:focus-visible, .tab-btn:focus-visible, .control-btn:focus-visible, .filter-chip:focus-visible, .station-item:focus-visible {
+      outline: 2px solid #00D4FF;
+      outline-offset: 2px;
+    }
+    
+    /* 响应式适配 */
+    @media (max-width: 1200px) {
+      #panel-left { width: 280px !important; }
+    }
+    @media (max-width: 900px) {
+      #panel-left { display: none !important; }
+      #panel-left.mobile-open { display: flex !important; position: fixed; left: 0; top: 0; width: 85vw; max-width: 320px; height: 100vh; z-index: 2000; border-radius: 0 14px 14px 0; animation: panelSlideLeft 0.4s ease; }
+      .waveform-visualizer { display: none; }
+      #player-bar { padding: 8px 10px; gap: 8px; }
+      .info-indicators { display: none; }
+      .continent-nav { gap: 0; }
+      .nav-link { padding: 6px 8px; font-size: 11px; }
+      .volume-control { min-width: 60px; }
+      .volume-percent { display: none; }
+      #hamburger-btn { display: flex !important; }
+    }
+    @media (max-width: 600px) {
+      #topbar { padding: 0 10px; gap: 8px; }
+      .logo-text { font-size: 12px; letter-spacing: 1px; }
+      .nav-link { padding: 5px 6px; font-size: 10px; }
+      .control-btn.secondary { display: none; }
+      .volume-slider-wrapper { width: 50px; }
+      #player-bar { gap: 6px; }
+      .now-playing-cover { width: 32px; height: 32px; }
+      .now-playing-name { font-size: 12px; }
+    }
+    /* 移动端遮罩 */
+    #mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1999; }
+    #mobile-overlay.show { display: block; }
+    /* Player dropdown menus */
+    .player-dropdown { position: relative; display: inline-flex; }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      bottom: 44px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20,24,36,0.96);
+      backdrop-filter: blur(24px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      min-width: 150px;
+      z-index: 2000;
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+      padding: 6px 0;
+    }
+    .player-dropdown.open .dropdown-menu { display: block; }
+    .dropdown-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(0,212,255,0.6);
+      padding: 4px 14px 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .dropdown-item {
+      padding: 8px 16px;
+      font-size: 12px;
+      border-radius: 6px;
+      margin: 1px 6px;
+      color: #A8B5C4;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .dropdown-item:hover { background: rgba(0,212,255,0.1); color: #fff; }
+    .dropdown-item.active { color: #00D4FF; background: rgba(0,212,255,0.06); }
+    .dropdown-sep { height: 1px; background: rgba(255,255,255,0.04); margin: 4px 0; }
+    #timer-dropdown .timer-active { color: #ff4d6d; }
+    .timer-indicator { font-size: 9px; color: #ff4d6d; position: absolute; bottom: -2px; right: -2px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="logo">
+      <div class="logo-icon">📡</div>
+      <div class="logo-text">WORLD<span>RADIO</span></div>
+    </div>
+    
+    <nav class="continent-nav" role="navigation" aria-label="大洲导航">
+      <button class="nav-link active" aria-label="飞往全球视角" onclick="flyToContinent('global',this)">全球</button>
+      <button class="nav-link" aria-label="飞往亚洲视角" onclick="flyToContinent('asia',this)">亚洲</button>
+      <button class="nav-link" aria-label="飞往欧洲视角" onclick="flyToContinent('europe',this)">欧洲</button>
+      <button class="nav-link" aria-label="飞往美洲视角" onclick="flyToContinent('america',this)">美洲</button>
+      <button class="nav-link" aria-label="飞往非洲视角" onclick="flyToContinent('africa',this)">非洲</button>
+      <button class="nav-link" aria-label="飞往大洋洲视角" onclick="flyToContinent('oceania',this)">大洋洲</button>
+    </nav>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+      <button class="icon-btn" id="hamburger-btn" onclick="toggleMobilePanel()" title="菜单" aria-label="打开导航菜单" style="display:none;">☰</button>
+      <button class="icon-btn" id="daynight-btn" onclick="toggleDayNight()" title="切换昼夜" aria-label="切换昼夜模式">🌙</button>
+    </div>
+  </header>
+  
+  <aside id="panel-left" class="panel">
+    <button onclick="togglePanel('left')" style="position:absolute;right:-16px;top:50%;transform:translateY(-50%);width:16px;height:60px;background:rgba(8,12,24,0.96);border:1px solid rgba(0,212,255,0.1);border-left:none;border-radius:0 8px 8px 0;color:#5A6B7C;font-size:10px;cursor:pointer;z-index:1001;display:flex;align-items:center;justify-content:center;transition:all 0.3s;" id="collapse-left-btn" title="收起面板">◀</button>
+    <div class="tab-bar" role="tablist" aria-label="面板标签">
+      <div class="tab-btn active" role="tab" aria-selected="true" onclick="switchTab(event,'filter')">发现</div>
+      <div class="tab-btn" role="tab" aria-selected="false" onclick="switchTab(event,'fav')">收藏</div>
+      <div class="tab-btn" role="tab" aria-selected="false" onclick="switchTab(event,'hist')">历史</div>
+    </div>
+    <div class="panel-body">
+      <div id="tab-filter">
+        <div class="search-box">
+          <div class="search-wrapper">
+            <span class="search-icon">&#x1F50D;</span>
+            <input type="text" class="search-input" id="search-input" placeholder="搜索电台、语言、国家..." oninput="searchStations(this.value)">
+          </div>
+        </div>
+        <div class="filter-section">
+          <div class="filter-header" onclick="toggleFilterSection(this)">
+            <div class="filter-title">🎵 类型</div>
+            <span class="filter-arrow">▼</span>
+          </div>
+          <div class="filter-body">
+            <div class="filter-chips">
+              <div class="filter-chip active" onclick="filterByGenre('all')">全部</div>
+              <div class="filter-chip" onclick="filterByGenre('pop')">流行</div>
+              <div class="filter-chip" onclick="filterByGenre('rock')">摇滚</div>
+              <div class="filter-chip" onclick="filterByGenre('jazz')">爵士</div>
+              <div class="filter-chip" onclick="filterByGenre('classical')">古典</div>
+              <div class="filter-chip" onclick="filterByGenre('news')">新闻</div>
+              <div class="filter-chip" onclick="filterByGenre('talk')">脱口秀</div>
+            </div>
+          </div>
+        </div>
+        <div class="filter-section">
+          <div class="filter-header" onclick="toggleFilterSection(this)">
+            <div class="filter-title">🗣️ 语言</div>
+            <span class="filter-arrow">▼</span>
+          </div>
+          <div class="filter-body">
+            <div class="filter-chips" id="language-filters">
+              <div class="filter-chip active" onclick="filterByLanguage('all')">全部</div>
+              <div class="filter-chip" onclick="filterByLanguage('chinese')">中文</div>
+              <div class="filter-chip" onclick="filterByLanguage('english')">英语</div>
+              <div class="filter-chip" onclick="filterByLanguage('japanese')">日语</div>
+              <div class="filter-chip" onclick="filterByLanguage('spanish')">西班牙语</div>
+              <div class="filter-chip" onclick="filterByLanguage('french')">法语</div>
+              <div class="filter-chip" onclick="filterByLanguage('german')">德语</div>
+            </div>
+          </div>
+        </div>
+        <div class="station-list-header">
+          <div class="station-list-title">电台列表</div>
+          <div class="station-count-badge">
+            <span class="dot"></span>
+            <span id="result-count">0</span>
+          </div>
+          <button class="mini-refresh-btn" onclick="loadStationsFromAPI()" title="刷新电台">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          </button>
+        </div>
+        <div id="station-list" style="padding:2px 4px 40px"></div>
+      </div>
+      <div id="tab-fav" style="display:none;padding:6px"><div id="fav-list"></div></div>
+      <div id="tab-hist" style="display:none"><div style="padding:8px 12px;"><button onclick="clearHistory()" style="width:100%;padding:8px;background:rgba(255,77,109,0.06);border:1px solid rgba(255,77,109,0.12);border-radius:10px;color:rgba(255,77,109,0.8);font-size:12px;cursor:pointer;transition:all 0.3s;font-weight:500;">清空历史</button></div><div id="hist-list" style="padding:4px"></div></div>
+    </div>
+    <div class="unified-panel-footer"><span><strong id="stat-total">0</strong> 电台 · <strong id="stat-online">0</strong> 国家</span></div>
+  </aside>
+  <div id="mobile-overlay" onclick="toggleMobilePanel()"></div>
+  
+  <main id="globe-container">
+    <div id="loading-overlay">
+      <div class="loader-icon">🌍</div>
+      <div class="loading-text" id="loading-text">正在加载 3D 地球...</div>
+      <div class="error-text" id="loading-error"></div>
+    </div>
+    <div id="cesiumContainer"></div>
+    
+
+
+        <!-- 信息指示器 -->
+    <div class="info-indicators">
+      <div class="info-item">
+        <strong>缩放级别:</strong> <span id="zoom-level">1</span>
+      </div>
+      <div class="info-item">
+        <strong>视角高度:</strong> <span id="view-height">0</span> km
+      </div>
+      <div class="info-item">
+        <strong>比例尺:</strong> <span id="scale-label">0</span> km
+        <div class="scale-bar" style="width: 100px;"></div>
+      </div>
+    </div>
+    
+    <!-- 电台信息提示框 -->
+    <div id="station-tooltip" class="station-tooltip">
+      <div class="tooltip-header">
+        <span class="tooltip-name" id="tooltip-name"></span>
+        <span class="tooltip-country" id="tooltip-country"></span>
+      </div>
+      <div class="tooltip-info">
+        <div class="tooltip-item">
+          <span class="tooltip-label">🗣️ 语言</span>
+          <span class="tooltip-value" id="tooltip-lang"></span>
+        </div>
+        <div class="tooltip-item">
+          <span class="tooltip-label">🎵 类型</span>
+          <span class="tooltip-value" id="tooltip-type"></span>
+        </div>
+        <div class="tooltip-item">
+          <span class="tooltip-label">📊 码率</span>
+          <span class="tooltip-value" id="tooltip-bitrate"></span>
+        </div>
+      </div>
+    </div>
+    
+  </main>
+  
+
+  
+  <!-- ================================
+       增强版播放器 - P0 Core
+       ================================ -->
+  <div id="player-bar">
+    <div class="player-top-row">
+      <div class="now-playing">
+        <div class="now-playing-cover" id="player-cover" onclick="togglePlay()">📻</div>
+        <div class="now-playing-info">
+          <div class="now-playing-name" id="player-name">点击地球选择电台 <span class="meta-inline" id="player-meta-inline">🌍 全球广播 · 待机</span></div>
+        </div>
+      </div>
+      <div class="waveform-visualizer" id="waveform">
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      </div>
+      <div class="play-controls">
+        <button class="control-btn primary" id="play-btn" onclick="togglePlay()">▶</button>
+        <button class="control-btn secondary" id="btn-fav" onclick="toggleFavorite()" title="收藏">🤍</button>
+        <div class="player-dropdown" id="eq-dropdown">
+          <button class="control-btn secondary" onclick="toggleDropdown('eq-dropdown')" title="EQ 均衡器">🎛️</button>
+          <div class="dropdown-menu">
+            <div class="dropdown-title">EQ 均衡器</div>
+            <div class="dropdown-item active" onclick="setEQ('off')">关闭</div>
+            <div class="dropdown-item" onclick="setEQ('pop')">流行</div>
+            <div class="dropdown-item" onclick="setEQ('rock')">摇滚</div>
+            <div class="dropdown-item" onclick="setEQ('jazz')">爵士</div>
+            <div class="dropdown-item" onclick="setEQ('classical')">古典</div>
+            <div class="dropdown-item" onclick="setEQ('vocal')">人声</div>
+            <div class="dropdown-item" onclick="setEQ('dance')">电音</div>
+            <div class="dropdown-sep"></div>
+            <div class="dropdown-item" onclick="adjustBass(1)">低音 +</div>
+            <div class="dropdown-item" onclick="adjustBass(-1)">低音 -</div>
+            <div class="dropdown-item" onclick="adjustTreble(1)">高音 +</div>
+            <div class="dropdown-item" onclick="adjustTreble(-1)">高音 -</div>
+          </div>
+        </div>
+        <div class="player-dropdown" id="timer-dropdown">
+          <button class="control-btn secondary" onclick="toggleDropdown('timer-dropdown')" title="倒计时">⏱️</button>
+          <div class="dropdown-menu">
+            <div class="dropdown-title">倒计时停播</div>
+            <div class="dropdown-item" onclick="setTimer(10)">10 分钟</div>
+            <div class="dropdown-item" onclick="setTimer(15)">15 分钟</div>
+            <div class="dropdown-item" onclick="setTimer(30)">30 分钟</div>
+            <div class="dropdown-item" onclick="setTimer(45)">45 分钟</div>
+            <div class="dropdown-item" onclick="setTimer(60)">1 小时</div>
+            <div class="dropdown-item" onclick="setTimer(90)">1.5 小时</div>
+            <div class="dropdown-sep"></div>
+            <div class="dropdown-item" onclick="setTimer(0)" style="color:#ff4d6d;">取消计时</div>
+          </div>
+        </div>
+      </div>
+      <div class="volume-control">
+        <button class="volume-btn" id="volume-btn" onclick="toggleMute()">🔊</button>
+        <div class="volume-slider-wrapper">
+          <div class="volume-fill" id="volume-fill" style="width: 80%;"></div>
+          <input type="range" min="0" max="100" value="80" id="volume-slider" oninput="setVolume(this.value)">
+        </div>
+        <span class="volume-percent" id="vol-label">80</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 音频播放器 - P0 -->
+<audio id="audio-player" preload="auto"></audio>
+
+<script>
+// 设置 Cesium Ion 访问令牌
+Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkNmQyMjg3Ni1iYTgxLTQ1MGYtODQ4Yi02ZjUxMjdlYTM4YjUiLCJpZCI6NDQwMDA2LCJpc3MiOiJodHRwczovL2FwaS5jZXNpdW0uY29tIiwiYXVkIjoidW5kZWZpbmVkX2RlZmF1bHQiLCJpYXQiOjE3ODA1MDk4Njh9.tebd5yWdND4jrZZI8f1MJnkt1XYigclpVEY72b_2F5Q';
+
+
+// ================================
+// 全局映射表 (消除重复)
+// ================================
+const COUNTRY_MAP = {
+  'china': '中国', 'united states': '美国', 'united states of america': '美国', 'united kingdom': '英国',
+  'japan': '日本', 'korea': '韩国', 'south korea': '韩国', 'france': '法国', 'germany': '德国',
+  'spain': '西班牙', 'italy': '意大利', 'russia': '俄罗斯', 'the russian federation': '俄罗斯',
+  'canada': '加拿大', 'australia': '澳大利亚', 'brazil': '巴西',
+  'india': '印度', 'mexico': '墨西哥', 'argentina': '阿根廷',
+  'netherlands': '荷兰', 'sweden': '瑞典', 'norway': '挪威',
+  'denmark': '丹麦', 'finland': '芬兰', 'poland': '波兰',
+  'thailand': '泰国', 'vietnam': '越南', 'indonesia': '印度尼西亚',
+  'singapore': '新加坡', 'malaysia': '马来西亚', 'philippines': '菲律宾',
+  'hong kong': '香港', 'taiwan': '台湾', 'macau': '澳门',
+  'switzerland': '瑞士', 'austria': '奥地利', 'belgium': '比利时',
+  'portugal': '葡萄牙', 'greece': '希腊', 'czech': '捷克',
+  'czechia': '捷克', 'hungary': '匈牙利', 'turkey': '土耳其',
+  'south africa': '南非', 'egypt': '埃及', 'new zealand': '新西兰',
+  'ireland': '爱尔兰', 'ukraine': '乌克兰', 'romania': '罗马尼亚',
+  'colombia': '哥伦比亚', 'chile': '智利', 'peru': '秘鲁',
+  'venezuela': '委内瑞拉', 'ecuador': '厄瓜多尔',
+  'nigeria': '尼日利亚', 'pakistan': '巴基斯坦',
+  'united arab emirates': '阿联酋', 'saudi arabia': '沙特阿拉伯',
+  'israel': '以色列', 'iran': '伊朗', 'iraq': '伊拉克',
+  'cuba': '古巴', 'dominican republic': '多米尼加', 'guatemala': '危地马拉',
+  'honduras': '洪都拉斯', 'panama': '巴拿马', 'costa rica': '哥斯达黎加',
+  'uruguay': '乌拉圭', 'paraguay': '巴拉圭', 'bolivia': '玻利维亚',
+  'kenya': '肯尼亚', 'ghana': '加纳', 'tanzania': '坦桑尼亚',
+  'morocco': '摩洛哥', 'tunisia': '突尼斯', 'senegal': '塞内加尔',
+  'cameroon': '喀麦隆', 'ethiopia': '埃塞俄比亚', 'uganda': '乌干达',
+  'rwanda': '卢旺达', "cote d'ivoire": '科特迪瓦', 'algeria': '阿尔及利亚',
+  'libya': '利比亚', 'bangladesh': '孟加拉国', 'sri lanka': '斯里兰卡',
+  'nepal': '尼泊尔', 'myanmar': '缅甸', 'cambodia': '柬埔寨',
+  'laos': '老挝', 'mongolia': '蒙古', 'serbia': '塞尔维亚',
+  'croatia': '克罗地亚', 'bulgaria': '保加利亚', 'slovakia': '斯洛伐克',
+  'slovenia': '斯洛文尼亚', 'lithuania': '立陶宛', 'latvia': '拉脱维亚',
+  'estonia': '爱沙尼亚', 'belarus': '白俄罗斯', 'moldova': '摩尔多瓦',
+  'fiji': '斐济', 'papua new guinea': '巴布亚新几内亚',
+  'jamaica': '牙买加', 'trinidad and tobago': '特立尼达和多巴哥',
+  'puerto rico': '波多黎各', 'republic of': '', 'democratic republic': '',
+  'the republic of': '', 'republic': ''
+};
+const LANG_MAP = {
+  'chinese': '中文', 'english': '英语', 'japanese': '日语',
+  'korean': '韩语', 'french': '法语', 'german': '德语',
+  'spanish': '西班牙语', 'portuguese': '葡萄牙语', 'russian': '俄语',
+  'cantonese': '粤语', 'mandarin': '普通话', 'taiwanese': '台语',
+  'arabic': '阿拉伯语', 'hindi': '印地语', 'vietnamese': '越南语',
+  'thai': '泰语', 'indonesian': '印尼语', 'malay': '马来语',
+  'turkish': '土耳其语', 'dutch': '荷兰语', 'polish': '波兰语',
+  'greek': '希腊语', 'czech': '捷克语', 'hungarian': '匈牙利语',
+  'swedish': '瑞典语', 'norwegian': '挪威语', 'danish': '丹麦语',
+  'finnish': '芬兰语', 'romanian': '罗马尼亚语', 'ukrainian': '乌克兰语',
+  'italian': '意大利语', 'hebrew': '希伯来语', 'persian': '波斯语',
+  'bengali': '孟加拉语', 'urdu': '乌尔都语', 'tamil': '泰米尔语',
+  'tagalog': '塔加路语', 'swahili': '斯瓦希里语', 'serbian': '塞尔维亚语',
+  'croatian': '克罗地亚语', 'bulgarian': '保加利亚语', 'slovak': '斯洛伐克语',
+  'slovenian': '斯洛文尼亚语', 'lithuanian': '立陶宛语', 'latvian': '拉脱维亚语',
+  'estonian': '爱沙尼亚语', 'catalan': '加泰罗尼亚语', 'basque': '巴斯克语',
+  'welsh': '威尔士语', 'irish': '爱尔兰语', 'icelandic': '冰岛语',
+  'albanian': '阿尔巴尼亚语', 'bosnian': '波斯尼亚语', 'macedonian': '马其顿语',
+  'amharic': '阿姆哈拉语', 'hausa': '豪萨语', 'yoruba': '约鲁巴语',
+  'zulu': '祖鲁语', 'afrikaans': '南非荷兰语', 'khmer': '高棉语',
+  'lao': '老挝语', 'burmese': '缅甸语', 'sinhala': '僧伽罗语',
+  'nepali': '尼泊尔语', 'mongolian': '蒙古语', 'georgian': '格鲁吉亚语',
+  'armenian': '亚美尼亚语', 'azerbaijani': '阿塞拜疆语',
+  'undefined': '多语言', '': '多语言'
+};
+const GENRE_MAP = {
+  'music': '音乐', 'pop': '流行', 'rock': '摇滚', 'jazz': '爵士',
+  'classical': '古典', 'electronic': '电子', 'hip hop': '嘻哈', 'rap': '说唱',
+  'folk': '民谣', 'country': '乡村', 'blues': '蓝调', 'metal': '金属',
+  'news': '新闻', 'talk': '脱口秀', 'sports': '体育', 'education': '教育',
+  'ambient': '氛围', 'lounge': '休息室', 'world': '世界', 'culture': '文化',
+  'oldies': '怀旧', 'dance': '舞曲', 'chill': '放松',
+  'instrumental': '器乐', 'r&b': '节奏布鲁斯', 'soul': '灵魂乐',
+  'funk': '放克', 'disco': '迪斯科', 'reggae': '雷鬼', 'latin': '拉丁',
+  '80s': '80年代', '90s': '90年代', 'classic': '经典', 'retro': '复古',
+  'adult': '成人', 'contemporary': '当代', 'alternative': '另类',
+  'indie': '独立', 'trance': '迷幻', 'techno': '科技舞曲',
+  'house': '浩室', 'new age': '新世纪', 'easy listening': '轻音乐'
+};
+function getCountryCn(name) { return COUNTRY_MAP[(name||'').toLowerCase()] || name || '未知'; }
+function getLangCn(name) { return LANG_MAP[(name||'').toLowerCase()] || name || '多语言'; }
+function getGenreCn(tag) { return GENRE_MAP[(tag||'').trim().toLowerCase()] || (tag||'').trim(); }
+
+// HTML 转义函数 - 防止 XSS
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+const STATE = {
+  isPlaying: false,
+  isMuted: false,
+  volume: 0.8,
+  currentStation: null,
+  stations: [],
+  viewer: null,
+  filteredStations: [],
+  entities: [],
+  markerPrimitives: null,
+  boundaryDataSource: null,
+  imageryLayer: null,
+  labelLayer: null,
+  dayNightEnabled: false,
+  bookmarks: [],
+  favorites: (() => { try { return JSON.parse(localStorage.getItem('gr_favorites') || '[]'); } catch(e) { return []; } })(),
+  history: (() => { try { return JSON.parse(localStorage.getItem('gr_history') || '[]'); } catch(e) { return []; } })(),
+  shuffle: false,
+  repeat: false,
+  audio: null,
+  hls: null,
+  isBuffering: false,
+  // 新增：筛选状态
+  filters: {
+    continent: 'all',
+    genre: 'all',
+    language: 'all',
+    search: ''
+  },
+  // 国家到大洲的映射
+  continentMap: {
+    'CN': 'asia', 'JP': 'asia', 'KR': 'asia', 'IN': 'asia', 'TH': 'asia',
+    'VN': 'asia', 'ID': 'asia', 'MY': 'asia', 'PH': 'asia', 'SG': 'asia',
+    'GB': 'europe', 'DE': 'europe', 'FR': 'europe', 'IT': 'europe',
+    'ES': 'europe', 'NL': 'europe', 'SE': 'europe', 'NO': 'europe',
+    'DK': 'europe', 'FI': 'europe', 'AT': 'europe', 'CH': 'europe',
+    'PL': 'europe', 'RU': 'europe', 'UA': 'europe', 'BE': 'europe',
+    'PT': 'europe', 'GR': 'europe', 'CZ': 'europe',
+    'US': 'america', 'CA': 'america', 'MX': 'america', 'BR': 'america',
+    'AR': 'america', 'CO': 'america', 'CL': 'america', 'PE': 'america',
+    'VE': 'america', 'EC': 'america',
+    'EG': 'africa', 'ZA': 'africa', 'NG': 'africa', 'PK': 'africa',
+    'AU': 'oceania', 'NZ': 'oceania'
+  },
+  // 地理位置标签数据
+  locationLabels: {
+    countries: [
+      { name: '中国', lat: 35.8617, lon: 104.1954, type: 'country' },
+      { name: '美国', lat: 37.0902, lon: -95.7129, type: 'country' },
+      { name: '日本', lat: 36.2048, lon: 138.2529, type: 'country' },
+      { name: '英国', lat: 55.3781, lon: -3.4360, type: 'country' },
+      { name: '德国', lat: 51.1657, lon: 10.4515, type: 'country' },
+      { name: '法国', lat: 46.2276, lon: 2.2137, type: 'country' },
+      { name: '意大利', lat: 41.8719, lon: 12.5674, type: 'country' },
+      { name: '西班牙', lat: 40.4637, lon: -3.7492, type: 'country' },
+      { name: '加拿大', lat: 56.1304, lon: -106.3468, type: 'country' },
+      { name: '澳大利亚', lat: -25.2744, lon: 133.7751, type: 'country' },
+      { name: '巴西', lat: -14.2350, lon: -51.9253, type: 'country' },
+      { name: '印度', lat: 20.5937, lon: 78.9629, type: 'country' },
+      { name: '俄罗斯', lat: 61.5240, lon: 105.3188, type: 'country' },
+      { name: '墨西哥', lat: 23.6345, lon: -102.5528, type: 'country' },
+      { name: '阿根廷', lat: -38.4161, lon: -63.6167, type: 'country' },
+      { name: '韩国', lat: 35.9078, lon: 127.7669, type: 'country' },
+      { name: '埃及', lat: 26.8206, lon: 30.8025, type: 'country' },
+      { name: '南非', lat: -30.5595, lon: 22.9375, type: 'country' },
+      { name: '印度尼西亚', lat: -0.7893, lon: 113.9213, type: 'country' },
+      { name: '泰国', lat: 15.8700, lon: 100.9925, type: 'country' },
+      { name: '越南', lat: 14.0583, lon: 108.2772, type: 'country' },
+      { name: '马来西亚', lat: 4.2105, lon: 101.9758, type: 'country' },
+      { name: '菲律宾', lat: 12.8797, lon: 121.7740, type: 'country' },
+      { name: '巴基斯坦', lat: 30.3753, lon: 69.3451, type: 'country' },
+      { name: '土耳其', lat: 38.9637, lon: 35.2433, type: 'country' },
+      { name: '伊朗', lat: 32.4279, lon: 53.6880, type: 'country' },
+      { name: '沙特阿拉伯', lat: 23.8859, lon: 45.0792, type: 'country' },
+      { name: '尼日利亚', lat: 9.0820, lon: 8.6753, type: 'country' },
+      { name: '肯尼亚', lat: -0.0236, lon: 37.9062, type: 'country' },
+      { name: '波兰', lat: 51.9194, lon: 19.1451, type: 'country' },
+      { name: '荷兰', lat: 52.1326, lon: 5.2913, type: 'country' },
+      { name: '瑞典', lat: 60.1282, lon: 18.6435, type: 'country' },
+      { name: '挪威', lat: 60.4720, lon: 8.4689, type: 'country' },
+      { name: '瑞士', lat: 46.8182, lon: 8.2275, type: 'country' },
+      { name: '奥地利', lat: 47.5162, lon: 14.5501, type: 'country' },
+      { name: '新西兰', lat: -40.9006, lon: 174.8860, type: 'country' },
+      { name: '哥伦比亚', lat: 4.5709, lon: -74.2973, type: 'country' },
+      { name: '智利', lat: -35.6751, lon: -71.5430, type: 'country' },
+      { name: '秘鲁', lat: -9.1900, lon: -75.0152, type: 'country' }
+    ],
+    cities: [
+      { name: '北京', lat: 39.9042, lon: 116.4074, type: 'city', country: '中国' },
+      { name: '上海', lat: 31.2304, lon: 121.4737, type: 'city', country: '中国' },
+      { name: '广州', lat: 23.1291, lon: 113.2644, type: 'city', country: '中国' },
+      { name: '深圳', lat: 22.5431, lon: 114.0579, type: 'city', country: '中国' },
+      { name: '成都', lat: 30.5728, lon: 104.0668, type: 'city', country: '中国' },
+      { name: '武汉', lat: 30.5928, lon: 114.3055, type: 'city', country: '中国' },
+      { name: '西安', lat: 34.2656, lon: 108.9541, type: 'city', country: '中国' },
+      { name: '南京', lat: 32.0603, lon: 118.7969, type: 'city', country: '中国' },
+      { name: '杭州', lat: 30.2741, lon: 120.1551, type: 'city', country: '中国' },
+      { name: '重庆', lat: 29.5630, lon: 106.5516, type: 'city', country: '中国' },
+      { name: '天津', lat: 39.1256, lon: 117.1901, type: 'city', country: '中国' },
+      { name: '长沙', lat: 28.2282, lon: 112.9388, type: 'city', country: '中国' },
+      { name: '郑州', lat: 34.7466, lon: 113.6253, type: 'city', country: '中国' },
+      { name: '沈阳', lat: 41.8057, lon: 123.4315, type: 'city', country: '中国' },
+      { name: '哈尔滨', lat: 45.7567, lon: 126.6424, type: 'city', country: '中国' },
+      { name: '昆明', lat: 25.0389, lon: 102.7183, type: 'city', country: '中国' },
+      { name: '济南', lat: 36.6512, lon: 117.1201, type: 'city', country: '中国' },
+      { name: '青岛', lat: 36.0671, lon: 120.3826, type: 'city', country: '中国' },
+      { name: '大连', lat: 38.9140, lon: 121.6147, type: 'city', country: '中国' },
+      { name: '厦门', lat: 24.4798, lon: 118.0894, type: 'city', country: '中国' },
+      { name: '拉萨', lat: 29.6520, lon: 91.1172, type: 'city', country: '中国' },
+      { name: '乌鲁木齐', lat: 43.7930, lon: 87.6177, type: 'city', country: '中国' },
+      { name: '东京', lat: 35.6762, lon: 139.6503, type: 'city', country: '日本' },
+      { name: '大阪', lat: 34.6937, lon: 135.5023, type: 'city', country: '日本' },
+      { name: '首尔', lat: 37.5665, lon: 126.9780, type: 'city', country: '韩国' },
+      { name: '纽约', lat: 40.7128, lon: -74.0060, type: 'city', country: '美国' },
+      { name: '洛杉矶', lat: 34.0522, lon: -118.2437, type: 'city', country: '美国' },
+      { name: '旧金山', lat: 37.7749, lon: -122.4194, type: 'city', country: '美国' },
+      { name: '芝加哥', lat: 41.8781, lon: -87.6298, type: 'city', country: '美国' },
+      { name: '伦敦', lat: 51.5074, lon: -0.1278, type: 'city', country: '英国' },
+      { name: '巴黎', lat: 48.8566, lon: 2.3522, type: 'city', country: '法国' },
+      { name: '柏林', lat: 52.5200, lon: 13.4050, type: 'city', country: '德国' },
+      { name: '罗马', lat: 41.9028, lon: 12.4964, type: 'city', country: '意大利' },
+      { name: '马德里', lat: 40.4168, lon: -3.7038, type: 'city', country: '西班牙' },
+      { name: '莫斯科', lat: 55.7558, lon: 37.6176, type: 'city', country: '俄罗斯' },
+      { name: '悉尼', lat: -33.8688, lon: 151.2093, type: 'city', country: '澳大利亚' },
+      { name: '墨尔本', lat: -37.8136, lon: 144.9631, type: 'city', country: '澳大利亚' },
+      { name: '新德里', lat: 28.6139, lon: 77.2090, type: 'city', country: '印度' },
+      { name: '孟买', lat: 19.0760, lon: 72.8777, type: 'city', country: '印度' },
+      { name: '曼谷', lat: 13.7563, lon: 100.5018, type: 'city', country: '泰国' },
+      { name: '新加坡', lat: 1.3521, lon: 103.8198, type: 'city', country: '新加坡' },
+      { name: '迪拜', lat: 25.2048, lon: 55.2708, type: 'city', country: '阿联酋' },
+      { name: '开罗', lat: 30.0444, lon: 31.2357, type: 'city', country: '埃及' },
+      { name: '开普敦', lat: -33.9249, lon: 18.4241, type: 'city', country: '南非' },
+      { name: '圣保罗', lat: -23.5505, lon: -46.6333, type: 'city', country: '巴西' },
+      { name: '多伦多', lat: 43.6532, lon: -79.3832, type: 'city', country: '加拿大' },
+      { name: '温哥华', lat: 49.2827, lon: -123.1207, type: 'city', country: '加拿大' },
+      { name: '墨西哥城', lat: 19.4326, lon: -99.1332, type: 'city', country: '墨西哥' },
+      { name: '布宜诺斯艾利斯', lat: -34.6037, lon: -58.3816, type: 'city', country: '阿根廷' },
+      { name: '伊斯坦布尔', lat: 41.0082, lon: 28.9784, type: 'city', country: '土耳其' },
+      { name: '雅加达', lat: -6.2088, lon: 106.8456, type: 'city', country: '印度尼西亚' },
+      { name: '阿姆斯特丹', lat: 52.3676, lon: 4.9041, type: 'city', country: '荷兰' },
+      { name: '斯德哥尔摩', lat: 59.3293, lon: 18.0686, type: 'city', country: '瑞典' },
+      { name: '奥斯陆', lat: 59.9139, lon: 10.7522, type: 'city', country: '挪威' }
+    ],
+    states: [
+      { name: '加利福尼亚', lat: 36.7783, lon: -119.4179, type: 'state', country: '美国' },
+      { name: '德克萨斯', lat: 31.9686, lon: -99.9018, type: 'state', country: '美国' },
+      { name: '纽约州', lat: 42.1657, lon: -74.9481, type: 'state', country: '美国' },
+      { name: '佛罗里达', lat: 27.6648, lon: -81.5158, type: 'state', country: '美国' },
+      { name: '广东', lat: 23.1291, lon: 113.2644, type: 'state', country: '中国' },
+      { name: '江苏', lat: 32.0603, lon: 118.7969, type: 'state', country: '中国' },
+      { name: '浙江', lat: 29.1416, lon: 119.7889, type: 'state', country: '中国' },
+      { name: '山东', lat: 36.6692, lon: 117.0108, type: 'state', country: '中国' },
+      { name: '四川', lat: 30.5728, lon: 104.0668, type: 'state', country: '中国' },
+      { name: '湖北', lat: 30.5928, lon: 114.3055, type: 'state', country: '中国' },
+      { name: '湖南', lat: 27.6662, lon: 111.9828, type: 'state', country: '中国' },
+      { name: '河南', lat: 34.7466, lon: 113.6253, type: 'state', country: '中国' },
+      { name: '河北', lat: 38.0428, lon: 114.5149, type: 'state', country: '中国' },
+      { name: '陕西', lat: 34.2656, lon: 108.9541, type: 'state', country: '中国' },
+      { name: '辽宁', lat: 41.8057, lon: 123.4315, type: 'state', country: '中国' },
+      { name: '福建', lat: 26.0745, lon: 119.2965, type: 'state', country: '中国' },
+      { name: '安徽', lat: 31.8206, lon: 117.2272, type: 'state', country: '中国' },
+      { name: '云南', lat: 25.0389, lon: 102.7183, type: 'state', country: '中国' },
+      { name: '新疆', lat: 43.7930, lon: 87.6177, type: 'state', country: '中国' },
+      { name: '西藏', lat: 29.6520, lon: 91.1172, type: 'state', country: '中国' },
+      { name: '黑龙江', lat: 45.7567, lon: 126.6424, type: 'state', country: '中国' },
+      { name: '内蒙古', lat: 40.8424, lon: 111.7517, type: 'state', country: '中国' },
+      { name: '广西', lat: 22.8170, lon: 108.3669, type: 'state', country: '中国' },
+      { name: '贵州', lat: 26.6470, lon: 106.6302, type: 'state', country: '中国' },
+      { name: '甘肃', lat: 36.0611, lon: 103.8343, type: 'state', country: '中国' },
+      { name: '本州', lat: 36.0000, lon: 138.0000, type: 'state', country: '日本' },
+      { name: '北海道', lat: 43.0646, lon: 141.3468, type: 'state', country: '日本' },
+      { name: '英格兰', lat: 52.3555, lon: -1.1743, type: 'state', country: '英国' },
+      { name: '苏格兰', lat: 56.4907, lon: -4.2026, type: 'state', country: '英国' },
+      { name: '巴伐利亚', lat: 48.7904, lon: 11.4979, type: 'state', country: '德国' },
+      { name: '新南威尔士', lat: -32.0000, lon: 147.0000, type: 'state', country: '澳大利亚' },
+      { name: '马哈拉施特拉', lat: 19.7515, lon: 75.7139, type: 'state', country: '印度' }
+    ]
+  },
+  labelEntities: [],
+  showLocationLabels: false, // 使用底图自带地名，不显示自定义标签
+  currentBaseMap: 'ion-aerial', // 天地图卫星影像（中文地名）
+  labelVisibility: {
+    country: true,
+    state: true,
+    city: true
+  },
+  isLoading: true,
+  // 国家坐标映射（用于地理编码）
+  countryCoordinates: {
+    'CN': { lat: 35.8617, lon: 104.1954 },
+    'US': { lat: 37.0902, lon: -95.7129 },
+    'JP': { lat: 36.2048, lon: 138.2529 },
+    'GB': { lat: 55.3781, lon: -3.4360 },
+    'DE': { lat: 51.1657, lon: 10.4515 },
+    'FR': { lat: 46.2276, lon: 2.2137 },
+    'IT': { lat: 41.8719, lon: 12.5674 },
+    'ES': { lat: 40.4637, lon: -3.7492 },
+    'CA': { lat: 56.1304, lon: -106.3468 },
+    'AU': { lat: -25.2744, lon: 133.7751 },
+    'BR': { lat: -14.2350, lon: -51.9253 },
+    'IN': { lat: 20.5937, lon: 78.9629 },
+    'RU': { lat: 61.5240, lon: 105.3188 },
+    'MX': { lat: 23.6345, lon: -102.5528 },
+    'AR': { lat: -38.4161, lon: -63.6167 },
+    'KR': { lat: 35.9078, lon: 127.7669 },
+    'NL': { lat: 52.1326, lon: 5.2913 },
+    'SE': { lat: 60.1282, lon: 18.6435 },
+    'NO': { lat: 60.4720, lon: 6.5631 },
+    'DK': { lat: 56.2639, lon: 9.5018 },
+    'FI': { lat: 61.9241, lon: 25.7482 },
+    'AT': { lat: 47.5162, lon: 14.5501 },
+    'CH': { lat: 46.8182, lon: 8.2275 },
+    'PL': { lat: 51.9194, lon: 19.1451 },
+    'UA': { lat: 48.3794, lon: 31.1656 },
+    'BE': { lat: 50.5039, lon: 4.4699 },
+    'PT': { lat: 39.3999, lon: -8.2245 },
+    'GR': { lat: 39.0742, lon: 21.8243 },
+    'CZ': { lat: 49.8175, lon: 15.4730 },
+    'CO': { lat: 4.5709, lon: -74.2973 },
+    'CL': { lat: -35.6751, lon: -71.5430 },
+    'PE': { lat: -9.1899, lon: -75.0152 },
+    'VE': { lat: 6.4238, lon: -66.5897 },
+    'EC': { lat: -1.8312, lon: -78.1834 },
+    'EG': { lat: 26.8206, lon: 30.8025 },
+    'ZA': { lat: -30.5595, lon: 22.9375 },
+    'NG': { lat: 9.0820, lon: 8.6753 },
+    'PK': { lat: 30.3753, lon: 69.3451 },
+    'NZ': { lat: -40.9006, lon: 174.8860 },
+    'TH': { lat: 15.8700, lon: 100.9925 },
+    'VN': { lat: 14.0583, lon: 108.2772 },
+    'ID': { lat: -0.7893, lon: 113.9213 },
+    'MY': { lat: 4.2105, lon: 101.9758 },
+    'PH': { lat: 12.8797, lon: 121.7740 },
+    'SG': { lat: 1.3521, lon: 103.8198 },
+    'HK': { lat: 22.3193, lon: 114.1694 },
+    'TW': { lat: 23.6978, lon: 120.9605 },
+    'BD': { lat: 23.6850, lon: 90.3563 },
+    'LK': { lat: 7.8731, lon: 80.7718 },
+    'NP': { lat: 28.3949, lon: 84.1240 },
+    'MM': { lat: 21.9162, lon: 95.9560 },
+    'KH': { lat: 12.5657, lon: 104.9910 },
+    'LA': { lat: 19.8563, lon: 102.4955 },
+    'MN': { lat: 46.8625, lon: 103.8467 },
+    'RO': { lat: 45.9432, lon: 24.9668 },
+    'HU': { lat: 47.1625, lon: 19.5033 },
+    'IE': { lat: 53.4129, lon: -8.2439 },
+    'RS': { lat: 44.0165, lon: 21.0059 },
+    'HR': { lat: 45.1000, lon: 15.2000 },
+    'BG': { lat: 42.7339, lon: 25.4858 },
+    'SK': { lat: 48.6690, lon: 19.6990 },
+    'SI': { lat: 46.1512, lon: 14.9955 },
+    'LT': { lat: 55.1694, lon: 23.8813 },
+    'LV': { lat: 56.8796, lon: 24.6032 },
+    'EE': { lat: 58.5953, lon: 25.0136 },
+    'CU': { lat: 21.5218, lon: -77.7812 },
+    'DO': { lat: 18.7357, lon: -70.1627 },
+    'GT': { lat: 15.7835, lon: -90.2308 },
+    'HN': { lat: 15.2000, lon: -86.2419 },
+    'PA': { lat: 8.5380, lon: -80.7821 },
+    'CR': { lat: 9.7489, lon: -83.7534 },
+    'UY': { lat: -32.5228, lon: -55.7658 },
+    'PY': { lat: -23.4425, lon: -58.4438 },
+    'BO': { lat: -16.2902, lon: -63.5887 },
+    'KE': { lat: -0.0236, lon: 37.9062 },
+    'GH': { lat: 7.9465, lon: -1.0232 },
+    'TZ': { lat: -6.3690, lon: 34.8888 },
+    'MA': { lat: 31.7917, lon: -7.0926 },
+    'TN': { lat: 33.8869, lon: 9.5375 },
+    'SN': { lat: 14.4974, lon: -14.4524 },
+    'CM': { lat: 7.3697, lon: 12.3547 },
+    'ET': { lat: 9.1450, lon: 40.4897 },
+    'UG': { lat: 1.3733, lon: 32.2903 },
+    'RW': { lat: -1.9403, lon: 29.8739 },
+    'CI': { lat: 7.5400, lon: -5.5471 },
+    'DZ': { lat: 28.0339, lon: 1.6596 },
+    'LY': { lat: 26.3351, lon: 17.2283 },
+    'FJ': { lat: -17.7134, lon: 178.0650 },
+    'PG': { lat: -6.3150, lon: 143.9555 }
+  }
+};
+
+
+// ================================
+// 收藏与历史功能
+// ================================
+function addToHistory(station) {
+  if (!station) return;
+  const entry = { stationuuid: station.stationuuid, name: station.name, country: station.country, countrycode: station.countrycode, language: station.language, bitrate: station.bitrate, tags: station.tags, url_resolved: station.url_resolved, geo_lat: station.geo_lat, geo_long: station.geo_long, favicon: station.favicon, homepage: station.homepage, url: station.url, codec: station.codec, votes: station.votes, clickcount: station.clickcount, time: Date.now() };
+  STATE.history = STATE.history.filter(h => h.stationuuid !== station.stationuuid);
+  STATE.history.unshift(entry);
+  if (STATE.history.length > 50) STATE.history = STATE.history.slice(0, 50);
+  localStorage.setItem('gr_history', JSON.stringify(STATE.history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('hist-list');
+  if (!list) return;
+  if (!STATE.history.length) {
+    list.innerHTML = '<div style="font-size:12px;color:#8A99AB;padding:12px;text-align:center">暂无播放历史</div>';
+    return;
+  }
+  list.innerHTML = STATE.history.map(h => {
+    const timeStr = new Date(h.time).toLocaleString('zh-CN', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const safeUuid = escapeHtml(h.stationuuid);
+    const safeName = escapeHtml(h.name||'未知');
+    return `<div class="station-item" data-uuid="${safeUuid}" onclick="selectStation(STATE.stations.find(s=>s.stationuuid==='${safeUuid}')||JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(h))}')))">
+      <div class="icon">${getCountryEmoji(h.countrycode)}</div>
+      <div class="info"><div class="name">${safeName}</div><div class="meta">${timeStr}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function clearHistory() {
+  STATE.history = [];
+  localStorage.removeItem('gr_history');
+  renderHistory();
+  showToast('🗑️ 历史已清空');
+}
+
+function toggleFavorite(station) {
+  if (!station) station = STATE.currentStation;
+  if (!station) { showToast('请先选择电台'); return; }
+  const idx = STATE.favorites.findIndex(f => f.stationuuid === station.stationuuid);
+  if (idx >= 0) {
+    STATE.favorites.splice(idx, 1);
+    showToast('💔 已取消收藏');
+  } else {
+    STATE.favorites.push({...station});
+    showToast('❤️ 已收藏');
+  }
+  localStorage.setItem('gr_favorites', JSON.stringify(STATE.favorites));
+  renderFavorites();
+  updateFavBtn();
+}
+
+function renderFavorites() {
+  const list = document.getElementById('fav-list');
+  if (!list) return;
+  if (!STATE.favorites.length) {
+    list.innerHTML = '<div style="font-size:12px;color:#8A99AB;padding:12px;text-align:center">暂无收藏，播放时点击 ❤️ 收藏</div>';
+    return;
+  }
+  list.innerHTML = STATE.favorites.map(f => {
+    const safeUuid = escapeHtml(f.stationuuid);
+    const safeName = escapeHtml(f.name||'未知');
+    const safeCountry = escapeHtml(f.country||'');
+    const safeLang = escapeHtml(f.language||'');
+    return `<div class="station-item" data-uuid="${safeUuid}" onclick="selectStation(STATE.stations.find(s=>s.stationuuid==='${safeUuid}')||JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(f))}')))">
+      <div class="icon">${getCountryEmoji(f.countrycode)}</div>
+      <div class="info"><div class="name">${safeName}</div><div class="meta">${safeCountry} · ${safeLang}</div></div>
+      <button onclick="event.stopPropagation();toggleFavorite(STATE.favorites.find(x=>x.stationuuid==='${safeUuid}'))" style="background:none;border:none;color:#ff4d6d;cursor:pointer;font-size:14px;padding:4px;">❤️</button>
+    </div>`;
+  }).join('');
+}
+
+function updateFavBtn() {
+  const btn = document.getElementById('btn-fav');
+  if (!btn || !STATE.currentStation) return;
+  const isFav = STATE.favorites.some(f => f.stationuuid === STATE.currentStation.stationuuid);
+  btn.textContent = isFav ? '❤️' : '🤍';
+  btn.title = isFav ? '取消收藏' : '添加收藏';
+}
+
+// 从电台列表红心按钮切换收藏
+function toggleFavFromList(uuid, btnEl) {
+  const station = STATE.stations.find(s => s.stationuuid === uuid)
+    || STATE.favorites.find(f => f.stationuuid === uuid);
+  if (!station) return;
+  const idx = STATE.favorites.findIndex(f => f.stationuuid === uuid);
+  if (idx >= 0) {
+    STATE.favorites.splice(idx, 1);
+    if (btnEl) { btnEl.classList.remove('faved'); btnEl.innerHTML = '♡'; btnEl.title = '收藏'; }
+    showToast('💔 已取消收藏');
+  } else {
+    STATE.favorites.push({...station});
+    if (btnEl) { btnEl.classList.add('faved'); btnEl.innerHTML = '❤'; btnEl.title = '取消收藏'; }
+    showToast('❤️ 已收藏');
+  }
+  localStorage.setItem('gr_favorites', JSON.stringify(STATE.favorites));
+  renderFavorites();
+  updateFavBtn();
+}
+
+// ================================
+// Radio Browser API 集成
+// ================================
+
+// 获取可用的Radio Browser服务器 (支持多服务器轮询)
+const RADIO_SERVERS = [
+  'https://de1.api.radio-browser.info',
+  'https://de2.api.radio-browser.info',
+  'https://fi1.api.radio-browser.info'
+];
+let _serverIdx = 0;
+async function getRadioBrowserServer() {
+  // 尝试找到可用的服务器
+  for (let i = 0; i < RADIO_SERVERS.length; i++) {
+    const idx = (_serverIdx + i) % RADIO_SERVERS.length;
+    try {
+      const resp = await fetch(RADIO_SERVERS[idx] + '/json/stats', { signal: AbortSignal.timeout(3000) });
+      if (resp.ok) {
+        _serverIdx = idx;
+        return RADIO_SERVERS[idx];
+      }
+    } catch(e) { /* try next */ }
+  }
+  return RADIO_SERVERS[0]; // fallback
+}
+
+// 从Radio Browser API加载5000+全球电台
+async function loadStationsFromAPI() {
+  showToast('📻 正在加载全球电台...');
+  renderLoadingState();
+  
+  try {
+    const server = await getRadioBrowserServer();
+    let stations = [];
+    
+    // 全球60+国家/地区，覆盖五大洲（中国电台使用硬编码坐标准确数据，不从此API获取）
+    const countryList = [
+      // 亚洲
+      'JP','KR','IN','TH','VN','ID','MY','PH','SG','TW','HK','PK','BD','LK','NP','MM','KH','LA','MN',
+      // 欧洲
+      'GB','DE','FR','IT','ES','NL','SE','NO','DK','FI','AT','CH','PL','RU','UA','BE','PT','GR','CZ','RO','HU','IE','RS','HR','BG','SK','SI','LT','LV','EE',
+      // 美洲
+      'US','CA','MX','BR','AR','CO','CL','PE','VE','EC','CU','DO','GT','HN','PA','CR','UY','PY','BO',
+      // 非洲
+      'EG','ZA','NG','KE','GH','TZ','MA','TN','SN','CM','ET','UG','RW','CI','DZ','LY',
+      // 大洋洲
+      'AU','NZ','FJ','PG'
+    ];
+    
+    // 分批并发获取（每批8个国家，每国最多50个电台）
+    const BATCH_SIZE = 8;
+    const PER_COUNTRY = 50;
+    
+    for (let i = 0; i < countryList.length; i += BATCH_SIZE) {
+      const batch = countryList.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(cc => fetchStationsByCountry(server, cc, PER_COUNTRY))
+      );
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value.length > 0) {
+          stations = stations.concat(r.value);
+        }
+      });
+      // 更新进度
+      const progress = Math.min(100, Math.round((i + BATCH_SIZE) / countryList.length * 100));
+      document.getElementById('loading-text').textContent = '加载电台 ' + stations.length + '+ (' + progress + '%)';
+    }
+    
+    // 补充全球热门电台
+    try {
+      const topStations = await fetchTopStations(server, 100);
+      stations = stations.concat(topStations);
+    } catch(e) {}
+    
+    // 去重
+    const seenUuids = new Set();
+    stations = stations.filter(station => {
+      if (seenUuids.has(station.stationuuid)) return false;
+      seenUuids.add(station.stationuuid);
+      return true;
+    });
+    
+    // 处理电台数据并添加坐标
+    stations = stations.map(station => processStationData(station)).filter(s => s !== null);
+    
+    // 合并中国省市电台（硬编码坐标准确数据）
+    // 过滤掉API中坐标准确度不高的中国电台，使用我们的硬编码数据
+    stations = stations.filter(s => (s.countrycode || '').toUpperCase() !== 'CN');
+    const chineseStations = getChineseStations();
+    stations = stations.concat(chineseStations);
+    
+    STATE.stations = stations;
+    STATE.filteredStations = stations;
+    
+    // 更新UI
+    updateStats();
+    applyCurrentFilters();
+    
+    showToast('\u2705 加载了 ' + stations.length + ' 个全球电台');
+    console.log('Loaded ' + stations.length + ' stations');
+    
+  } catch (error) {
+    console.error('Failed to load stations:', error);
+    showToast('\u26A0\uFE0F API加载失败，使用示例数据');
+    loadSampleStations();
+  }
+}
+
+// 中国省市级电台（含精确坐标）
+function getChineseStations() {
+  const cn = [
+    // ── 国家级 (satellitepull.cnr.cn 已验证可用) ──
+    {name:'中央人民广播电台 中国之声',url:'https://satellitepull.cnr.cn/live/wxzgzs/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'新闻,综合',br:128},
+    {name:'中央人民广播电台 经济之声',url:'https://satellitepull.cnr.cn/live/wxjjzs/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'财经,新闻',br:128},
+    {name:'中央人民广播电台 音乐之声',url:'https://satellitepull.cnr.cn/live/wxyyzs/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'音乐,流行',br:128},
+    {name:'中央人民广播电台 都市之声',url:'https://satellitepull.cnr.cn/live/wxdszs/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'都市,生活',br:128},
+    {name:'中央人民广播电台 神州之声',url:'https://satellitepull.cnr.cn/live/wxszzs/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'文化,谈话',br:128},
+    {name:'中央人民广播电台 台海之声',url:'https://satellitepull.cnr.cn/live/wxzhzs/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'新闻,谈话',br:128},
+    {name:'中央人民广播电台 民族之声',url:'https://satellitepull.cnr.cn/live/wxmzzs/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'民族,文化',br:128},
+    {name:'中央人民广播电台 文艺之声',url:'https://satellitepull.cnr.cn/live/wxwyzs/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'文艺,文化',br:128},
+    {name:'中央人民广播电台 乡村之声',url:'https://satellitepull.cnr.cn/live/wxxczs/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'乡村,农业',br:128},
+    {name:'中央人民广播电台 老年之声',url:'https://satellitepull.cnr.cn/live/wxlnzs/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'生活,健康',br:128},
+    {name:'中央人民广播电台 藏语广播',url:'https://satellitepull.cnr.cn/live/wxzygb/playlist.m3u8',lat:29.652,lon:91.117,cc:'CN',lang:'藏语',tags:'藏语,文化',br:64},
+    {name:'中央人民广播电台 维语广播',url:'https://satellitepull.cnr.cn/live/wxwygb/playlist.m3u8',lat:43.793,lon:87.618,cc:'CN',lang:'维语',tags:'维语,文化',br:64},
+    // ── 国际台 (sk.cri.cn 已验证可用) ──
+    {name:'CRI 环球资讯广播',url:'https://satellitepull.cnr.cn/live/wxhqzx01/playlist.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'新闻,国际',br:128},
+    {name:'CRI 华语环球广播',url:'https://sk.cri.cn/hyhq.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'中文',tags:'新闻,国际',br:128},
+    {name:'CRI 南海之声',url:'https://sk.cri.cn/nhzs.m3u8',lat:20.017,lon:110.349,cc:'CN',lang:'中文',tags:'综合,南海',br:128},
+    {name:'CRI CGTN Radio',url:'https://sk.cri.cn/am846.m3u8',lat:39.908,lon:116.397,cc:'CN',lang:'英语',tags:'新闻,英语',br:64},
+    // ── 北京 ──
+    {name:'北京新闻广播',url:'https://satellitepull.cnr.cn/live/wxbjxwgb/playlist.m3u8',lat:39.904,lon:116.407,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    // ── 上海 ──
+    {name:'上海东方卫视音频',url:'https://satellitepull.cnr.cn/live/wx32dfws/playlist.m3u8',lat:31.230,lon:121.474,cc:'CN',lang:'中文',tags:'综合,新闻',br:128},
+    // ── 天津 ──
+    {name:'天津卫视音频',url:'https://satellitepull.cnr.cn/live/wxtjws/playlist.m3u8',lat:39.125,lon:117.190,cc:'CN',lang:'中文',tags:'综合,新闻',br:128},
+    // ── 重庆 ──
+    {name:'重庆新闻广播',url:'https://satellitepull.cnr.cn/live/wxcqxwgb/playlist.m3u8',lat:29.563,lon:106.551,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    {name:'重庆卫视音频',url:'https://satellitepull.cnr.cn/live/wxcqws/playlist.m3u8',lat:29.563,lon:106.551,cc:'CN',lang:'中文',tags:'综合',br:128},
+    // ── 广东 ──
+    {name:'广东新闻广播',url:'https://satellitepull.cnr.cn/live/wxgdxwgb/playlist.m3u8',lat:23.129,lon:113.264,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    {name:'广东音乐之声',url:'https://satellitepull.cnr.cn/live/wxgdyyzs/playlist.m3u8',lat:23.129,lon:113.264,cc:'CN',lang:'中文',tags:'音乐,粤语',br:128},
+    // ── 深圳 ──
+    {name:'深圳飞扬971',url:'https://satellitepull.cnr.cn/live/wxszfy971/playlist.m3u8',lat:22.543,lon:114.058,cc:'CN',lang:'中文',tags:'音乐,生活',br:128},
+    // ── 浙江 ──
+    {name:'浙江之声',url:'https://satellitepull.cnr.cn/live/wxzjzs/playlist.m3u8',lat:30.274,lon:120.155,cc:'CN',lang:'中文',tags:'新闻,综合',br:128},
+    {name:'浙江卫视音频',url:'https://satellitepull.cnr.cn/live/wxzjws/playlist.m3u8',lat:30.274,lon:120.155,cc:'CN',lang:'中文',tags:'综合',br:128},
+    // ── 江苏 ──
+    {name:'江苏新闻综合广播',url:'https://satellitepull.cnr.cn/live/wx32jsxwzhgb/playlist.m3u8',lat:32.060,lon:118.797,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    {name:'江苏交通广播',url:'https://satellitepull.cnr.cn/live/wx32jsjtgb/playlist.m3u8',lat:32.060,lon:118.797,cc:'CN',lang:'中文',tags:'交通',br:128},
+    // ── 四川 ──
+    {name:'四川交通广播',url:'https://satellitepull.cnr.cn/live/wxscjtgb/playlist.m3u8',lat:30.572,lon:104.066,cc:'CN',lang:'中文',tags:'交通,生活',br:128},
+    // ── 湖北 ──
+    {name:'湖北之声',url:'https://satellitepull.cnr.cn/live/wx32hubzsgb/playlist.m3u8',lat:30.592,lon:114.305,cc:'CN',lang:'中文',tags:'新闻,综合',br:128},
+    // ── 湖南 ──
+    {name:'湖南新闻广播',url:'https://satellitepull.cnr.cn/live/wx32hunxwgb/playlist.m3u8',lat:28.228,lon:112.939,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    {name:'湖南潇湘之声',url:'https://satellitepull.cnr.cn/live/wx32hunyygb/playlist.m3u8',lat:28.228,lon:112.939,cc:'CN',lang:'中文',tags:'音乐,文化',br:128},
+    {name:'湖南交通广播',url:'https://satellitepull.cnr.cn/live/wx32hunjtgb/playlist.m3u8',lat:28.228,lon:112.939,cc:'CN',lang:'中文',tags:'交通',br:128},
+    // ── 山东 ──
+    {name:'山东交通广播',url:'https://satellitepull.cnr.cn/live/wxsdjtgb/playlist.m3u8',lat:36.668,lon:116.997,cc:'CN',lang:'中文',tags:'交通',br:128},
+    // ── 河南 ──
+    {name:'河南新闻广播',url:'https://satellitepull.cnr.cn/live/wxhnxwgb/playlist.m3u8',lat:34.747,lon:113.625,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    // ── 安徽 ──
+    {name:'安徽之声',url:'https://satellitepull.cnr.cn/live/wxahxxgb/playlist.m3u8',lat:31.820,lon:117.227,cc:'CN',lang:'中文',tags:'新闻,综合',br:128},
+    {name:'安徽交通广播',url:'https://satellitepull.cnr.cn/live/wxahjtgb/playlist.m3u8',lat:31.820,lon:117.227,cc:'CN',lang:'中文',tags:'交通',br:128},
+    // ── 福建 ──
+    {name:'福建新闻广播',url:'https://satellitepull.cnr.cn/live/wx32fjxwgb/playlist.m3u8',lat:26.074,lon:119.296,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    {name:'福建汽车音乐广播',url:'https://satellitepull.cnr.cn/live/wx32fjdnyygb/playlist.m3u8',lat:26.074,lon:119.296,cc:'CN',lang:'中文',tags:'音乐',br:128},
+    {name:'福州音乐广播',url:'https://satellitepull.cnr.cn/live/wx32fzdnyygb/playlist.m3u8',lat:26.074,lon:119.296,cc:'CN',lang:'中文',tags:'音乐',br:128},
+    // ── 陕西 ──
+    {name:'陕西交通广播',url:'https://satellitepull.cnr.cn/live/wxsxxjtgb/playlist.m3u8',lat:34.265,lon:108.954,cc:'CN',lang:'中文',tags:'交通',br:128},
+    // ── 辽宁 ──
+    {name:'辽宁之声',url:'https://satellitepull.cnr.cn/live/wxlnzhgb/playlist.m3u8',lat:41.805,lon:123.432,cc:'CN',lang:'中文',tags:'新闻,综合',br:128},
+    // ── 黑龙江 ──
+    {name:'黑龙江新闻广播',url:'https://satellitepull.cnr.cn/live/wx32hljxwgb/playlist.m3u8',lat:45.756,lon:126.643,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    // ── 吉林 ──
+    {name:'吉林交通广播',url:'https://satellitepull.cnr.cn/live/wxjljtgb/playlist.m3u8',lat:43.886,lon:125.325,cc:'CN',lang:'中文',tags:'交通',br:128},
+    // ── 内蒙古 ──
+    {name:'内蒙古新闻广播',url:'https://satellitepull.cnr.cn/live/wx32nmghyzhxwgb/playlist.m3u8',lat:40.842,lon:111.750,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    // ── 新疆 ──
+    {name:'新疆新闻广播',url:'https://satellitepull.cnr.cn/live/wxxjxwgb/playlist.m3u8',lat:43.793,lon:87.618,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    // ── 西藏 ──
+    {name:'西藏都市生活广播',url:'https://satellitepull.cnr.cn/live/wxxzdsshgb/playlist.m3u8',lat:29.652,lon:91.117,cc:'CN',lang:'中文',tags:'都市,生活',br:128},
+    // ── 广西 ──
+    {name:'广西综合广播',url:'https://satellitepull.cnr.cn/live/wx32gxrmgb/playlist.m3u8',lat:22.817,lon:108.367,cc:'CN',lang:'中文',tags:'新闻,综合',br:128},
+    // ── 云南 ──
+    {name:'云南新闻广播',url:'https://satellitepull.cnr.cn/live/wxynxwgb/playlist.m3u8',lat:25.040,lon:102.712,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    // ── 贵州 ──
+    {name:'贵州综合广播',url:'https://satellitepull.cnr.cn/live/wx32gzwxwzhgb/playlist.m3u8',lat:26.647,lon:106.630,cc:'CN',lang:'中文',tags:'新闻,综合',br:128},
+    // ── 甘肃 ──
+    {name:'甘肃交通广播',url:'https://satellitepull.cnr.cn/live/wxgsjtgb/playlist.m3u8',lat:36.061,lon:103.834,cc:'CN',lang:'中文',tags:'交通',br:128},
+    {name:'甘肃卫视音频',url:'https://satellitepull.cnr.cn/live/wxgsws/playlist.m3u8',lat:36.061,lon:103.834,cc:'CN',lang:'中文',tags:'综合',br:128},
+    // ── 宁夏 ──
+    {name:'宁夏经济广播',url:'https://satellitepull.cnr.cn/live/wxnxjjgb/playlist.m3u8',lat:38.487,lon:106.232,cc:'CN',lang:'中文',tags:'财经,生活',br:128},
+    // ── 青海 ──
+    {name:'青海新闻综合广播',url:'https://satellitepull.cnr.cn/live/wx32qhwxzhgb/playlist.m3u8',lat:36.617,lon:101.778,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    // ── 海南 ──
+    {name:'海南新闻广播',url:'https://satellitepull.cnr.cn/live/wxhainxwgb/playlist.m3u8',lat:20.017,lon:110.349,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    {name:'海南交通广播',url:'https://satellitepull.cnr.cn/live/wxhainjtgb/playlist.m3u8',lat:20.017,lon:110.349,cc:'CN',lang:'中文',tags:'交通',br:128},
+    {name:'海南卫视音频',url:'https://satellitepull.cnr.cn/live/wxhainlyws/playlist.m3u8',lat:20.017,lon:110.349,cc:'CN',lang:'中文',tags:'综合,旅游',br:128},
+    // ── 江西 ──
+    {name:'江西新闻广播',url:'https://satellitepull.cnr.cn/live/wx32jiangxxwgb/playlist.m3u8',lat:28.682,lon:115.858,cc:'CN',lang:'中文',tags:'新闻',br:128},
+    {name:'江西交通广播',url:'https://satellitepull.cnr.cn/live/wx32jiangxjtgb/playlist.m3u8',lat:28.682,lon:115.858,cc:'CN',lang:'中文',tags:'交通',br:128},
+    {name:'江西卫视音频',url:'https://satellitepull.cnr.cn/live/wx32jiangxws/playlist.m3u8',lat:28.682,lon:115.858,cc:'CN',lang:'中文',tags:'综合',br:128},
+    // ── 山西 ──
+    {name:'山西卫视音频',url:'https://satellitepull.cnr.cn/live/wxssxws/playlist.m3u8',lat:37.857,lon:112.549,cc:'CN',lang:'中文',tags:'综合',br:128},
+    // ── 延边 ──
+    {name:'延边卫视音频',url:'https://satellitepull.cnr.cn/live/wxybws/playlist.m3u8',lat:42.891,lon:129.508,cc:'CN',lang:'朝鲜语',tags:'综合,朝鲜语',br:128},
+  ];
+  let uid = 900000;
+  return cn.map(s => ({
+    stationuuid: 'cn-' + (uid++),
+    name: s.name,
+    url: s.url,
+    url_resolved: s.url,
+    homepage: '',
+    favicon: '',
+    tags: s.tags || '',
+    country: '中国',
+    countrycode: s.cc || 'CN',
+    language: s.lang || '中文',
+    codec: 'AAC',
+    bitrate: s.br || 128,
+    votes: 0,
+    clickcount: 0,
+    geo_lat: s.lat,
+    geo_long: s.lon
+  }));
+}
+
+// 按国家获取电台
+async function fetchStationsByCountry(server, countryCode, limit = 20) {
+  try {
+    const url = `${server}/json/stations/bycountrycodeexact/${countryCode}?limit=${limit}&order=clickcount&reverse=true`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error(`Error fetching stations for ${countryCode}:`, error);
+    return [];
+  }
+}
+
+// 获取热门电台
+async function fetchTopStations(server, limit = 100) {
+  try {
+    const url = `${server}/json/stations/topclick?limit=${limit}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching top stations:', error);
+    return [];
+  }
+}
+
+// 处理电台数据，添加坐标
+function processStationData(station) {
+  if (!station || !station.url_resolved) return null;
+  
+  // 获取国家代码
+  const countryCode = station.countrycode ? station.countrycode.toUpperCase() : null;
+  
+  // 获取坐标
+  let geo_lat = station.geo_lat;
+  let geo_long = station.geo_long;
+  
+  // 过滤掉坐标为 (0,0) 或无效的电台 — 这些电台没有真实地理位置
+  if ((geo_lat === 0 && geo_long === 0) || geo_lat === null || geo_long === null) {
+    geo_lat = null;
+    geo_long = null;
+  }
+  
+  // 如果API没有提供有效坐标，使用国家默认坐标（小范围偏移避免重叠）
+  if ((!geo_lat || !geo_long) && countryCode && STATE.countryCoordinates[countryCode]) {
+    const coords = STATE.countryCoordinates[countryCode];
+    // 小范围随机偏移（±0.5°≈55km），确保标记在正确区域附近
+    geo_lat = coords.lat + (Math.random() - 0.5) * 1;
+    geo_long = coords.lon + (Math.random() - 0.5) * 1;
+  }
+  
+  // 如果还是没有坐标，跳过该电台（不再随机分配到大洋中）
+  if (!geo_lat || !geo_long) {
+    return null;
+  }
+  
+  return {
+    stationuuid: station.stationuuid,
+    name: station.name || '未知电台',
+    url: station.url,
+    url_resolved: station.url_resolved,
+    homepage: station.homepage,
+    favicon: station.favicon,
+    tags: station.tags || '',
+    country: station.country || '未知',
+    countrycode: countryCode,
+    language: station.language || '未知',
+    codec: station.codec,
+    bitrate: station.bitrate,
+    votes: station.votes,
+    clickcount: station.clickcount,
+    geo_lat: geo_lat,
+    geo_long: geo_long
+  };
+}
+
+// 加载本地示例电台数据（备选方案）
+function loadSampleStations() {
+  const sampleStations = [
+    {
+      stationuuid: 'sample-1',
+      name: '中国国际广播电台',
+      country: '中国',
+      countrycode: 'CN',
+      language: '中文',
+      bitrate: 128,
+      tags: 'news,chinese',
+      geo_lat: 39.9042,
+      geo_long: 116.4074,
+      url_resolved: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service'
+    },
+    {
+      stationuuid: 'sample-2',
+      name: 'BBC World Service',
+      country: '英国',
+      countrycode: 'GB',
+      language: '英语',
+      bitrate: 192,
+      tags: 'news,english',
+      geo_lat: 51.5074,
+      geo_long: -0.1278,
+      url_resolved: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service'
+    },
+    {
+      stationuuid: 'sample-3',
+      name: 'NHK World Radio',
+      country: '日本',
+      countrycode: 'JP',
+      language: '日语',
+      bitrate: 128,
+      tags: 'news,japanese',
+      geo_lat: 35.6762,
+      geo_long: 139.6503,
+      url_resolved: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service'
+    },
+    {
+      stationuuid: 'sample-4',
+      name: 'NPR News',
+      country: '美国',
+      countrycode: 'US',
+      language: '英语',
+      bitrate: 192,
+      tags: 'news,english',
+      geo_lat: 40.7128,
+      geo_long: -74.0060,
+      url_resolved: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service'
+    },
+    {
+      stationuuid: 'sample-5',
+      name: 'Deutsche Welle',
+      country: '德国',
+      countrycode: 'DE',
+      language: '德语',
+      bitrate: 128,
+      tags: 'news,german',
+      geo_lat: 52.5200,
+      geo_long: 13.4050,
+      url_resolved: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service'
+    }
+  ];
+  
+  STATE.stations = sampleStations;
+  STATE.filteredStations = sampleStations;
+  updateStats();
+  renderStationList(sampleStations);
+  updateGlobeMarkers(sampleStations);
+}
+
+// ================================
+// 筛选功能
+// ================================
+
+let _searchTimer = null;
+function searchStations(query) {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => {
+    STATE.filters.search = query.toLowerCase();
+    applyCurrentFilters();
+  }, 300);
+}
+
+function filterByContinent(continent) {
+  STATE.filters.continent = continent;
+  updateFilterUI('continent', continent);
+  applyCurrentFilters();
+}
+
+function filterByGenre(genre) {
+  STATE.filters.genre = genre;
+  updateFilterUI('genre', genre);
+  applyCurrentFilters();
+}
+
+function filterByLanguage(language) {
+  STATE.filters.language = language;
+  updateFilterUI('language', language);
+  applyCurrentFilters();
+}
+
+function updateFilterUI(filterType, activeValue) {
+  const containers = {
+    'continent': document.querySelectorAll('.filter-chips:nth-of-type(1) .filter-chip'),
+    'genre': document.querySelectorAll('.filter-chips:nth-of-type(2) .filter-chip'),
+    'language': document.querySelectorAll('#language-filters .filter-chip')
+  };
+  
+  if (containers[filterType]) {
+    containers[filterType].forEach(chip => {
+      const chipValue = chip.getAttribute('onclick').match(/'([^']+)'/)[1];
+      chip.classList.toggle('active', chipValue === activeValue);
+    });
+  }
+}
+
+function applyCurrentFilters() {
+  let filtered = [...STATE.stations];
+  
+  // 搜索过滤
+  if (STATE.filters.search) {
+    filtered = filtered.filter(s => 
+      s.name?.toLowerCase().includes(STATE.filters.search) ||
+      s.language?.toLowerCase().includes(STATE.filters.search) ||
+      s.country?.toLowerCase().includes(STATE.filters.search) ||
+      s.tags?.toLowerCase().includes(STATE.filters.search)
+    );
+  }
+  
+  // 大洲过滤
+  if (STATE.filters.continent !== 'all') {
+    filtered = filtered.filter(s => {
+      if (!s.countrycode) return false;
+      const continent = STATE.continentMap[s.countrycode.toUpperCase()];
+      return continent === STATE.filters.continent;
+    });
+  }
+  
+  // 类型过滤
+  if (STATE.filters.genre !== 'all') {
+    filtered = filtered.filter(s => 
+      s.tags?.toLowerCase().includes(STATE.filters.genre)
+    );
+  }
+  
+  // 语言过滤
+  if (STATE.filters.language !== 'all') {
+    filtered = filtered.filter(s => 
+      s.language?.toLowerCase().includes(STATE.filters.language)
+    );
+  }
+  
+  STATE.filteredStations = filtered;
+  document.getElementById('result-count').textContent = filtered.length;
+  renderStationList(filtered);
+  updateGlobeMarkers(filtered);
+}
+
+// ================================
+// 渲染辅助函数
+// ================================
+
+function renderLoadingState() {
+  const list = document.getElementById('station-list');
+  list.innerHTML = `
+    <div class="loading-stations">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">正在加载电台...</div>
+    </div>
+  `;
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = STATE.stations.length;
+  const countries = new Set(STATE.stations.map(s => s.countrycode).filter(Boolean));
+  document.getElementById('stat-online').textContent = countries.size;
+}
+
+// switchTab 已统一移至下方唯一定义
+
+// ================================
+// 初始化音频播放器 - P0 Core
+// ================================
+function initAudioPlayer() {
+  STATE.audio = document.getElementById('audio-player');
+  
+  // 音频事件监听
+  STATE.audio.addEventListener('loadstart', onLoadStart);
+  STATE.audio.addEventListener('waiting', onBuffering);
+  STATE.audio.addEventListener('playing', onPlaying);
+  STATE.audio.addEventListener('pause', onPause);
+  STATE.audio.addEventListener('error', onError);
+  STATE.audio.addEventListener('timeupdate', onTimeUpdate);
+  STATE.audio.addEventListener('progress', onProgress);
+  STATE.audio.addEventListener('ended', onEnded);
+  
+  // 设置初始音量
+  STATE.audio.volume = STATE.volume;
+  
+  console.log('🎵 音频播放器初始化完成');
+}
+
+function onLoadStart() {
+  STATE.isBuffering = true;
+  updatePlayerStatus('缓冲中...', 'buffering');
+  animateWaveform();
+}
+
+function onBuffering() {
+  STATE.isBuffering = true;
+  updatePlayerStatus('缓冲中...', 'buffering');
+}
+
+function onPlaying() {
+  STATE.isBuffering = false;
+  STATE.isPlaying = true;
+  updatePlayerStatus('播放中', '');
+  updatePlayButton();
+  animateWaveform();
+  const bar = document.getElementById('player-bar');
+  if (bar) bar.classList.add('playing');
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) playBtn.classList.add('playing-btn');
+  const cover = document.getElementById('player-cover');
+  if (cover) cover.classList.add('playing');
+}
+
+function onPause() {
+  STATE.isPlaying = false;
+  STATE.isBuffering = false;
+  updatePlayerStatus('暂停', '');
+  updatePlayButton();
+  stopWaveformAnimation();
+  const bar = document.getElementById('player-bar');
+  if (bar) bar.classList.remove('playing');
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) playBtn.classList.remove('playing-btn');
+  const cover = document.getElementById('player-cover');
+  if (cover) cover.classList.remove('playing');
+}
+
+function onError(e) {
+  console.error('🎵 音频播放错误:', e);
+  STATE.isPlaying = false;
+  STATE.isBuffering = false;
+  updatePlayerStatus('连接失败', 'error');
+  updatePlayButton();
+  stopWaveformAnimation();
+  const bar = document.getElementById('player-bar');
+  if (bar) bar.classList.remove('playing');
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) playBtn.classList.remove('playing-btn');
+  const cover = document.getElementById('player-cover');
+  if (cover) cover.classList.remove('playing');
+  showToast('⚠️ 电台无法播放，请尝试其他电台');
+}
+
+function onTimeUpdate() {
+  // 直播流无需更新进度
+}
+
+function onProgress() {
+  // 直播流无需更新缓冲
+}
+
+function onEnded() {
+  if (STATE.repeat) {
+    // 重复播放
+    STATE.audio.currentTime = 0;
+    STATE.audio.play();
+  } else {
+    // 自动下一首
+    nextStation();
+  }
+}
+
+function updatePlayerStatus(text, type) {
+  const metaInline = document.getElementById('player-meta-inline');
+  if (metaInline && STATE.currentStation) {
+    const country = getCountryCn(STATE.currentStation.country);
+    const bitrate = STATE.currentStation.bitrate ? STATE.currentStation.bitrate + ' kbps' : '--';
+    metaInline.textContent = '\uD83C\uDF0D ' + country + ' \u00B7 ' + bitrate + ' \u00B7 ' + text;
+  }
+}
+
+function updatePlayButton() {
+  const btn = document.getElementById('play-btn');
+  btn.textContent = STATE.isPlaying ? '⏸' : '▶';
+}
+
+
+// ================================
+// 波形可视化增强
+// ================================
+let waveformAnimationId = null;
+
+function animateWaveform() {
+  if (!STATE.isPlaying) return;
+  
+  const bars = document.querySelectorAll('.wave-bar');
+  const barCount = bars.length;
+  const maxH = 32;
+  // Each bar has a persistent "energy" value for smooth animation
+  if (!window._waveEnergy) {
+    window._waveEnergy = new Float32Array(barCount);
+    for (let i = 0; i < barCount; i++) window._waveEnergy[i] = 0.2;
+  }
+  
+  function update() {
+    if (!STATE.isPlaying) {
+      stopWaveformAnimation();
+      return;
+    }
+    
+    const time = Date.now() / 1000;
+    
+    bars.forEach((bar, i) => {
+      const norm = i / barCount;
+      // Bass frequencies (left bars) are stronger
+      const bassWeight = Math.max(0, 1 - norm * 1.5);
+      // Mid frequencies (center bars)
+      const midWeight = 1 - Math.abs(norm - 0.4) * 2;
+      // High frequencies (right bars) are lighter
+      const highWeight = Math.max(0, norm - 0.5) * 0.6;
+      
+      // Multiple sine waves at different frequencies simulate music
+      const wave1 = Math.sin(time * 3.5 + i * 0.4) * 0.5 + 0.5;
+      const wave2 = Math.sin(time * 7.2 + i * 0.7) * 0.3 + 0.3;
+      const wave3 = Math.sin(time * 1.8 + i * 0.2) * 0.4 + 0.4;
+      const beat = Math.pow(Math.sin(time * 2.2) * 0.5 + 0.5, 3); // beat pulse
+      
+      const raw = (wave1 * bassWeight + wave2 * midWeight + wave3 * highWeight + beat * bassWeight * 0.5) / 1.5;
+      const noise = Math.random() * 0.15;
+      const target = Math.max(0.08, Math.min(1, raw + noise));
+      
+      // Smooth energy transition
+      window._waveEnergy[i] += (target - window._waveEnergy[i]) * 0.35;
+      const h = Math.max(3, window._waveEnergy[i] * maxH);
+      bar.style.height = h + 'px';
+    });
+    
+    waveformAnimationId = requestAnimationFrame(update);
+  }
+  
+  update();
+}
+
+function stopWaveformAnimation() {
+  if (waveformAnimationId) {
+    cancelAnimationFrame(waveformAnimationId);
+    waveformAnimationId = null;
+  }
+  window._waveEnergy = null;
+  const bars = document.querySelectorAll('.wave-bar');
+  bars.forEach(bar => { bar.style.height = '3px'; });
+}
+
+// ================================
+// 播放控制增强
+// ================================
+function togglePlay() {
+  if (!STATE.currentStation) {
+    showToast('🎵 请先选择一个电台');
+    return;
+  }
+  
+  if (STATE.isPlaying) {
+    STATE.audio.pause();
+  } else {
+    STATE.audio.play().catch(e => {
+      console.error('播放失败:', e);
+      showToast('⚠️ 播放失败，请检查网络连接');
+    });
+  }
+}
+
+function toggleMute() {
+  STATE.isMuted = !STATE.isMuted;
+  STATE.audio.muted = STATE.isMuted;
+  
+  const btn = document.getElementById('volume-btn');
+  btn.textContent = STATE.isMuted ? '🔇' : (STATE.volume > 0.5 ? '🔊' : '🔉');
+}
+
+function setVolume(value) {
+  value = Math.max(0, Math.min(100, Number(value)));
+  STATE.volume = value / 100;
+  if (STATE.audio) STATE.audio.volume = STATE.volume;
+  STATE.isMuted = false;
+  
+  document.getElementById('vol-label').textContent = value;
+  document.getElementById('volume-fill').style.width = value + '%';
+  document.getElementById('volume-slider').value = value;
+  
+  const btn = document.getElementById('volume-btn');
+  btn.textContent = STATE.volume > 0.5 ? '🔊' : (STATE.volume > 0 ? '🔉' : '🔇');
+}
+
+// ================================
+// 下拉菜单（EQ / 倒计时）
+// ================================
+function toggleDropdown(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const wasOpen = el.classList.contains('open');
+  // 先关闭所有下拉
+  document.querySelectorAll('.player-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!wasOpen) el.classList.add('open');
+}
+// 点击外部关闭下拉菜单
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.player-dropdown')) {
+    document.querySelectorAll('.player-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});
+
+// ================================
+// EQ 均衡器（视觉模式 — 因跨域限制无法使用 Web Audio API 处理直播流音频）
+// ================================
+let currentEQ = 'off';
+const EQ_PRESETS = {
+  off:     { bass: 0, treble: 0, label: '关闭' },
+  pop:     { bass: 2, treble: 3, label: '流行 Pop' },
+  rock:    { bass: 4, treble: 2, label: '摇滚 Rock' },
+  jazz:    { bass: 3, treble: 4, label: '爵士 Jazz' },
+  classical: { bass: 5, treble: 1, label: '古典 Classical' },
+  vocal:   { bass: -2, treble: 5, label: '人声 Vocal' },
+  dance:   { bass: 6, treble: 3, label: '电音 Dance' }
+};
+
+function setEQ(preset) {
+  currentEQ = preset;
+  const info = EQ_PRESETS[preset] || EQ_PRESETS.off;
+  // 更新菜单高亮
+  const dd = document.getElementById('eq-dropdown');
+  if (dd) {
+    dd.querySelectorAll('.dropdown-item').forEach(item => {
+      item.classList.remove('active');
+      if (item.getAttribute('onclick') === "setEQ('" + preset + "')") item.classList.add('active');
+    });
+  }
+  showToast('🎛️ EQ: ' + info.label + '（视觉模式）');
+}
+
+function adjustBass(delta) {
+  const info = EQ_PRESETS[currentEQ] || EQ_PRESETS.off;
+  info.bass = Math.max(-10, Math.min(10, info.bass + delta));
+  showToast('🎛️ 低音: ' + (info.bass > 0 ? '+' : '') + info.bass);
+}
+
+function adjustTreble(delta) {
+  const info = EQ_PRESETS[currentEQ] || EQ_PRESETS.off;
+  info.treble = Math.max(-10, Math.min(10, info.treble + delta));
+  showToast('🎛️ 高音: ' + (info.treble > 0 ? '+' : '') + info.treble);
+}
+
+// ================================
+// 倒计时停播
+// ================================
+let timerInterval = null;
+let timerRemaining = 0;
+
+function setTimer(minutes) {
+  // 关闭已有计时
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; timerRemaining = 0; }
+  // 关闭下拉
+  const dd = document.getElementById('timer-dropdown');
+  if (dd) dd.classList.remove('open');
+
+  if (minutes <= 0) {
+    showToast('⏱️ 倒计时已取消');
+    updateTimerDisplay('');
+    return;
+  }
+  timerRemaining = minutes * 60;
+  showToast('⏱️ ' + minutes + ' 分钟后自动停播');
+  updateTimerDisplay(formatTimer(timerRemaining));
+
+  timerInterval = setInterval(function() {
+    timerRemaining--;
+    if (timerRemaining <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      // 停止播放
+      if (STATE.audio && STATE.isPlaying) {
+        STATE.audio.pause();
+        showToast('⏱️ 倒计时结束，已停止播放');
+      }
+      updateTimerDisplay('');
+      return;
+    }
+    // 最后60秒提示
+    if (timerRemaining === 60) showToast('⏱️ 还剩 1 分钟');
+    if (timerRemaining <= 10) showToast('⏱️ ' + timerRemaining + '秒');
+    updateTimerDisplay(formatTimer(timerRemaining));
+  }, 1000);
+}
+
+function formatTimer(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function updateTimerDisplay(text) {
+  // 在倒计时按钮上显示剩余时间
+  const btn = document.querySelector('#timer-dropdown > button');
+  if (!btn) return;
+  if (text) {
+    btn.title = '倒计时 ' + text;
+    btn.style.position = 'relative';
+    let badge = btn.querySelector('.timer-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'timer-badge';
+      badge.style.cssText = 'position:absolute;top:-4px;right:-8px;font-size:8px;background:#00D4FF;color:#0a0f1c;padding:1px 4px;font-weight:700;';
+      btn.appendChild(badge);
+    }
+    badge.textContent = text;
+  } else {
+    btn.title = '倒计时';
+    const badge = btn.querySelector('.timer-badge');
+    if (badge) badge.remove();
+  }
+}
+
+function toggleShuffle() {
+  STATE.shuffle = !STATE.shuffle;
+  const btn = document.getElementById('btn-shuffle');
+  if (btn) btn.classList.toggle('active', STATE.shuffle);
+  showToast(STATE.shuffle ? '🔀 随机播放已开启' : '🔀 随机播放已关闭');
+}
+
+function toggleRepeat() {
+  STATE.repeat = !STATE.repeat;
+  const btn = document.getElementById('btn-repeat');
+  if (btn) btn.classList.toggle('active', STATE.repeat);
+  showToast(STATE.repeat ? '🔁 循环播放已开启' : '🔁 循环播放已关闭');
+}
+
+function prevStation() {
+  if (!STATE.filteredStations.length) return;
+  
+  const idx = STATE.filteredStations.findIndex(s => s.stationuuid === STATE.currentStation?.stationuuid);
+  const prevIdx = idx > 0 ? idx - 1 : STATE.filteredStations.length - 1;
+  selectStation(STATE.filteredStations[prevIdx]);
+}
+
+function nextStation() {
+  if (!STATE.filteredStations.length) return;
+  
+  let nextIdx;
+  if (STATE.shuffle) {
+    // 随机播放
+    const idx = STATE.filteredStations.findIndex(s => s.stationuuid === STATE.currentStation?.stationuuid);
+    nextIdx = Math.floor(Math.random() * STATE.filteredStations.length);
+    if (nextIdx === idx && STATE.filteredStations.length > 1) {
+      nextIdx = (nextIdx + 1) % STATE.filteredStations.length;
+    }
+  } else {
+    // 顺序播放
+    const idx = STATE.filteredStations.findIndex(s => s.stationuuid === STATE.currentStation?.stationuuid);
+    nextIdx = idx < STATE.filteredStations.length - 1 ? idx + 1 : 0;
+  }
+  
+  selectStation(STATE.filteredStations[nextIdx]);
+}
+
+function selectStation(station) {
+  STATE.currentStation = station;
+  updatePlayer();
+  
+  // 停止当前播放
+  if (STATE.audio) {
+    STATE.audio.pause();
+    STATE.audio.src = '';
+  }
+  
+  // 播放新电台
+  if (station && station.url_resolved) {
+    updatePlayerStatus('连接中...', 'buffering');
+    document.getElementById('player-cover').classList.add('loading');
+    
+    const streamUrl = station.url_resolved;
+    // 检测是否为 HLS (.m3u8) 流
+    if (streamUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+      // 使用 hls.js 接管播放
+      if (STATE.hls) { STATE.hls.destroy(); }
+      const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+      STATE.hls = hls;
+      hls.loadSource(streamUrl);
+      hls.attachMedia(STATE.audio);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        STATE.audio.play().catch(e => {
+          console.error('HLS播放失败:', e);
+          updatePlayerStatus('连接失败', 'error');
+          showToast('⚠️ 电台无法播放，请尝试其他电台');
+        });
+      });
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          console.error('HLS致命错误:', data);
+          updatePlayerStatus('连接失败', 'error');
+          document.getElementById('player-cover').classList.remove('loading');
+          showToast('⚠️ 电台流加载失败');
+          hls.destroy();
+        }
+      });
+    } else {
+      STATE.audio.src = streamUrl;
+      STATE.audio.play().catch(e => {
+        console.error('播放失败:', e);
+        updatePlayerStatus('连接失败', 'error');
+        document.getElementById('player-cover').classList.remove('loading');
+        document.getElementById('player-cover').classList.remove('playing');
+        showToast('⚠️ 电台无法播放，请尝试其他电台');
+      });
+    }
+  }
+  
+  // 更新UI状态并联动滚动
+  document.querySelectorAll('.station-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll(`[data-uuid="${station.stationuuid}"]`).forEach(el => {
+    el.classList.add('active');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  updateFavBtn();
+  
+  // 飞到电台位置
+  if (STATE.viewer && station.geo_lat && station.geo_long) {
+    STATE.viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 5000000),
+      duration: 2
+    });
+    
+    highlightStation(station);
+  }
+  
+  // 记录播放历史
+  addToHistory(station);
+  
+  showToast(`🎵 正在播放: ${station.name}`);
+}
+
+function updatePlayer() {
+  const station = STATE.currentStation;
+  const coverEl = document.getElementById('player-cover');
+  const nameEl = document.getElementById('player-name');
+  const metaInline = document.getElementById('player-meta-inline');
+  
+  if (station) {
+    // Set name text node (first child)
+    const nameText = station.name || '未知电台';
+    if (nameEl.firstChild && nameEl.firstChild.nodeType === 3) {
+      nameEl.firstChild.textContent = nameText + ' ';
+    } else {
+      nameEl.insertBefore(document.createTextNode(nameText + ' '), metaInline);
+    }
+    
+    const countryCn = getCountryCn(station.country);
+    const bitrate = station.bitrate ? station.bitrate + ' kbps' : '--';
+    if (metaInline) metaInline.textContent = '\uD83C\uDF0D ' + countryCn + ' \u00B7 ' + bitrate + ' \u00B7 播放中';
+    
+    // 封面显示真实LOGO
+    const favicon = station.favicon;
+    if (favicon && (favicon.startsWith('http://') || favicon.startsWith('https://'))) {
+      coverEl.textContent = '';
+      const img = document.createElement('img');
+      img.src = favicon;
+      img.style.cssText = 'width:100%;height:100%;border-radius:10px;object-fit:contain;';
+      img.onerror = function() { this.parentElement.textContent = '\uD83D\uDCFB'; };
+      coverEl.appendChild(img);
+    } else {
+      const emoji = getCountryEmoji(station.countrycode);
+      coverEl.textContent = emoji || '📻';
+    }
+    
+    if (STATE.isPlaying) {
+      coverEl.classList.add('playing');
+      coverEl.classList.remove('loading');
+    } else {
+      coverEl.classList.remove('playing');
+    }
+  } else {
+    if (nameEl.firstChild && nameEl.firstChild.nodeType === 3) {
+      nameEl.firstChild.textContent = '点击地球选择电台 ';
+    }
+    if (metaInline) metaInline.textContent = '\uD83C\uDF0D 全球广播 \u00B7 待机';
+    coverEl.innerHTML = '📻';
+    coverEl.classList.remove('playing', 'loading');
+  }
+}
+
+function getCountryEmoji(countryCode) {
+  if (!countryCode) return '🌍';
+  
+  const codeMap = {
+    'CN': '🇨🇳', 'US': '🇺🇸', 'JP': '🇯🇵', 'GB': '🇬🇧', 'DE': '🇩🇪',
+    'FR': '🇫🇷', 'IT': '🇮🇹', 'ES': '🇪🇸', 'RU': '🇷🇺', 'AU': '🇦🇺',
+    'CA': '🇨🇦', 'BR': '🇧🇷', 'IN': '🇮🇳', 'KR': '🇰🇷', 'MX': '🇲🇽',
+    'AR': '🇦🇷', 'EG': '🇪🇬', 'ZA': '🇿🇦', 'NG': '🇳🇬', 'PK': '🇵🇰',
+    'ID': '🇮🇩', 'VN': '🇻🇳', 'TH': '🇹🇭', 'PH': '🇵🇭', 'MY': '🇲🇾'
+  };
+  
+  return codeMap[countryCode.toUpperCase()] || '🌍';
+}
+
+function highlightStation(station) {
+  // 移除之前的高亮和脉冲
+  STATE.entities.forEach(e => {
+    if (e._isHighlight || e._isPulse) STATE.viewer.entities.remove(e);
+  });
+  STATE.entities = STATE.entities.filter(e => !e._isHighlight && !e._isPulse);
+  
+  const GREEN = Cesium.Color.fromCssColorString('#39FF14');
+  
+  // 高亮圆点 — 大号亮绿色点
+  const dot = STATE.viewer.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 2000),
+    point: {
+      pixelSize: 18,
+      color: GREEN,
+      outlineColor: Cesium.Color.WHITE,
+      outlineWidth: 3,
+      heightReference: Cesium.HeightReference.NONE,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    },
+    label: {
+      text: station.name || '',
+      font: 'bold 14px "Microsoft YaHei", -apple-system, sans-serif',
+      fillColor: GREEN,
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 3,
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      pixelOffset: new Cesium.Cartesian2(0, -18),
+      heightReference: Cesium.HeightReference.NONE,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    },
+    _isHighlight: true
+  });
+  STATE.entities.push(dot);
+}
+
+// ================================
+// 键盘快捷键支持增强
+// ================================
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  
+  switch(e.code) {
+    case 'Space':
+      e.preventDefault();
+      togglePlay();
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      prevStation();
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      nextStation();
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      setVolume(Math.min(100, Math.round(STATE.volume * 100) + 10));
+      document.getElementById('volume-slider').value = Math.round(STATE.volume * 100);
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      setVolume(Math.max(0, Math.round(STATE.volume * 100) - 10));
+      document.getElementById('volume-slider').value = Math.round(STATE.volume * 100);
+      break;
+    case 'KeyM':
+      toggleMute();
+      break;
+    case 'KeyR':
+      resetView();
+      break;
+    case 'Home':
+      resetView();
+      break;
+    case 'KeyB':
+      addBookmark();
+      break;
+    case 'KeyD':
+      toggleDayNight();
+      break;
+  }
+});
+
+// ================================
+// 其他原有功能
+// ================================
+let _toastEl = null, _toastTimer = null;
+function showToast(msg) {
+  if (!_toastEl) {
+    _toastEl = document.createElement('div');
+    _toastEl.className = 'toast';
+    document.body.appendChild(_toastEl);
+  }
+  _toastEl.textContent = msg;
+  _toastEl.style.display = 'block';
+  _toastEl.style.animation = 'none';
+  void _toastEl.offsetWidth; // 强制reflow重启动画
+  _toastEl.style.animation = 'fadeInUp 0.3s';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { _toastEl.style.display = 'none'; }, 3000);
+}
+
+function switchTab(evt, tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+  if (evt && evt.target) { evt.target.classList.add('active'); evt.target.setAttribute('aria-selected', 'true'); }
+  ['filter', 'fav', 'hist'].forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
+}
+
+function togglePanel(side) {
+  const panel = document.getElementById('panel-' + side);
+  const btn = document.getElementById('collapse-' + side + '-btn');
+  if (!panel) return;
+  const isCollapsed = panel.classList.toggle('collapsed-' + side);
+  if (btn) btn.textContent = isCollapsed ? '▶' : '◀';
+}
+
+function toggleMobilePanel() {
+  const panel = document.getElementById('panel-left');
+  const overlay = document.getElementById('mobile-overlay');
+  if (!panel) return;
+  const isOpen = panel.classList.toggle('mobile-open');
+  if (overlay) overlay.classList.toggle('show', isOpen);
+}
+
+function toggleFilterSection(header) {
+  const section = header.closest('.filter-section');
+  if (section) section.classList.toggle('collapsed');
+}
+
+function flyToCity(cityName, lat, lon) {
+  if (!STATE.viewer) return;
+  showToast(`🌍 定位到 ${cityName}`);
+  
+  // 推荐附近电台（飞行完成后触发）
+  const recommendNearby = () => {
+    const nearby = STATE.stations.filter(s => {
+      if (!s.geo_lat || !s.geo_long) return false;
+      const dist = Math.sqrt(Math.pow(s.geo_lat - lat, 2) + Math.pow(s.geo_long - lon, 2));
+      return dist < 10;
+    });
+    if (nearby.length > 0) {
+      showToast(`📻 ${cityName}附近找到 ${nearby.length} 个电台`);
+      renderStationList(nearby);
+      document.getElementById('result-count').textContent = nearby.length;
+    }
+  };
+  
+  STATE.viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(lon, lat, 5000000),
+    orientation: {
+      heading: Cesium.Math.toRadians(0),
+      pitch: Cesium.Math.toRadians(-90),
+      roll: 0
+    },
+    duration: 1.5,
+    complete: recommendNearby
+  });
+}
+
+function flyToContinent(continent, btnEl) {
+  if (!STATE.viewer) return;
+  
+  // 切换导航高亮
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  
+  const viewpoints = {
+    global: { lon: 0, lat: 20, height: 22000000 },
+    asia: { lon: 100, lat: 30, height: 12000000 },
+    europe: { lon: 15, lat: 50, height: 8000000 },
+    america: { lon: -90, lat: 20, height: 12000000 },
+    africa: { lon: 20, lat: 10, height: 10000000 },
+    oceania: { lon: 135, lat: -25, height: 10000000 }
+  };
+  const names = { global: '全球', asia: '亚洲', europe: '欧洲', america: '美洲', africa: '非洲', oceania: '大洋洲' };
+  
+  const view = viewpoints[continent];
+  if (view) {
+    STATE.viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(view.lon, view.lat, view.height),
+      orientation: {
+        heading: 0,
+        pitch: -Cesium.Math.PI_OVER_TWO,
+        roll: 0
+      },
+      duration: 2.5
+    });
+    showToast('\uD83C\uDF0D 飞往 ' + (names[continent] || continent));
+  }
+  
+  // Also filter stations by continent
+  if (continent === 'global') {
+    STATE.filters.continent = 'all';
+  } else {
+    STATE.filters.continent = continent;
+  }
+  applyCurrentFilters();
+}
+
+function resetView() {
+  if (!STATE.viewer) return;
+  STATE.viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(0, 20, 20000000),
+    orientation: {
+      heading: 0,
+      pitch: -Cesium.Math.PI_OVER_TWO,
+      roll: 0
+    },
+    duration: 2
+  });
+  showToast('🏠 重置到全球视角');
+}
+
+function renderStationList(stations) {
+  const list = document.getElementById('station-list');
+  if (!stations.length) {
+    list.innerHTML = '<div style="font-size:12px;color:#6B7A8C;padding:12px;text-align:center">暂无电台</div>';
+    return;
+  }
+  list.innerHTML = stations.map(s => {
+    const countryCn = escapeHtml(getCountryCn(s.country));
+    const langCn = escapeHtml(LANG_MAP[(s.language||'').toLowerCase()] || s.language || '多语言');
+    const bitrateStr = s.bitrate ? s.bitrate + ' kbps' : '';
+    const isFav = STATE.favorites.some(f => f.stationuuid === s.stationuuid);
+    const safeName = escapeHtml(s.name || '未命名');
+    const safeUuid = escapeHtml(s.stationuuid);
+    return `
+      <div class="station-item" data-uuid="${safeUuid}" onclick="selectStation(STATE.stations.find(x=>x.stationuuid==='${safeUuid}'))">
+        <div class="icon">${getCountryEmoji(s.countrycode)}</div>
+        <div class="info">
+          <div class="name">${safeName}</div>
+          <div class="meta">${countryCn} · ${langCn}${bitrateStr ? ' · ' + bitrateStr : ''}</div>
+        </div>
+        <button class="station-heart${isFav ? ' faved' : ''}" onclick="event.stopPropagation();toggleFavFromList('${safeUuid}',this)" title="${isFav ? '取消收藏' : '收藏'}">
+          ${isFav ? '❤' : '♡'}
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleBoundary() {
+  const btn = document.getElementById('btn-boundary');
+  if (!btn) return;
+  btn.classList.toggle('active');
+  
+  if (STATE.boundaryDataSource) {
+    STATE.boundaryDataSource.show = btn.classList.contains('active');
+  }
+  showToast(btn.classList.contains('active') ? '🗺 显示国家边界' : '🗺 隐藏国家边界');
+}
+
+function toggleLabels() {
+  const btn = document.getElementById('btn-labels');
+  if (!btn) return;
+  btn.classList.toggle('active');
+  
+  if (STATE.labelLayer) {
+    STATE.labelLayer.show = btn.classList.contains('active');
+  }
+  showToast(btn.classList.contains('active') ? '🏷 显示地名标签' : '🏷 隐藏地名标签');
+}
+
+function toggleDayNight() {
+  STATE.dayNightEnabled = !STATE.dayNightEnabled;
+  
+  // 兼容旧UI（滑动式开关）
+  const dnNight = document.getElementById('dn-night');
+  const dnDay = document.getElementById('dn-day');
+  const dnSlider = document.getElementById('dn-slider');
+  const daynightIcon = document.getElementById('daynight-icon');
+  
+  if (STATE.dayNightEnabled) {
+    if (dnNight) dnNight.classList.remove('active');
+    if (dnDay) dnDay.classList.add('active');
+    if (dnSlider) dnSlider.style.transform = 'translateX(100%)';
+    if (daynightIcon) daynightIcon.textContent = '☀️';
+  } else {
+    if (dnNight) dnNight.classList.add('active');
+    if (dnDay) dnDay.classList.remove('active');
+    if (dnSlider) dnSlider.style.transform = 'translateX(0%)';
+    if (daynightIcon) daynightIcon.textContent = '🌙';
+  }
+  
+  // 更新新版按钮图标
+  const dnBtn = document.getElementById('daynight-btn');
+  if (dnBtn) dnBtn.textContent = STATE.dayNightEnabled ? '☀️' : '🌙';
+  
+  if (STATE.viewer) {
+    STATE.viewer.scene.globe.enableLighting = STATE.dayNightEnabled;
+  }
+  showToast(STATE.dayNightEnabled ? '☀️ 真实光照模式' : '🌙 均匀光照模式');
+}
+
+function addBookmark() {
+  if (!STATE.viewer) return;
+  
+  const camera = STATE.viewer.camera;
+  const cartographic = Cesium.Cartographic.fromCartesian(camera.position);
+  const lon = Cesium.Math.toDegrees(cartographic.longitude);
+  const lat = Cesium.Math.toDegrees(cartographic.latitude);
+  const height = cartographic.height;
+  
+  const bookmark = {
+    id: Date.now(),
+    name: `位置 ${STATE.bookmarks.length + 1}`,
+    lon: lon,
+    lat: lat,
+    height: height,
+    heading: camera.heading,
+    pitch: camera.pitch,
+    roll: camera.roll
+  };
+  
+  STATE.bookmarks.push(bookmark);
+  renderBookmarks();
+  showToast('⭐ 书签已添加');
+}
+
+function renderBookmarks() {
+  const list = document.getElementById('bookmark-list');
+  if (!list) return; // 如果元素不存在则返回
+  
+  if (!STATE.bookmarks.length) {
+    list.innerHTML = '<div style="font-size:11px;color:#6B7A8C;text-align:center;padding:10px">暂无数签</div>';
+    return;
+  }
+  
+  list.innerHTML = STATE.bookmarks.map(b => `
+    <div class="bookmark-item" onclick="flyToBookmark(${b.id})">
+      <span>📍</span>
+      <span>${b.name}</span>
+      <span class="delete" onclick="event.stopPropagation();deleteBookmark(${b.id})">×</span>
+    </div>
+  `).join('');
+}
+
+function flyToBookmark(id) {
+  const bookmark = STATE.bookmarks.find(b => b.id === id);
+  if (!bookmark || !STATE.viewer) return;
+  
+  STATE.viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(bookmark.lon, bookmark.lat, bookmark.height),
+    orientation: {
+      heading: bookmark.heading,
+      pitch: bookmark.pitch,
+      roll: bookmark.roll
+    },
+    duration: 1.5
+  });
+  showToast('📍 飞到书签位置');
+}
+
+function deleteBookmark(id) {
+  STATE.bookmarks = STATE.bookmarks.filter(b => b.id !== id);
+  renderBookmarks();
+  showToast('❌ 书签已删除');
+}
+
+function addLocationLabels() {
+  if (!STATE.viewer) return;
+  
+  // 移除旧的位置标签
+  STATE.labelEntities.forEach(e => {
+    STATE.viewer.entities.remove(e);
+  });
+  STATE.labelEntities = [];
+  
+  const allLabels = [
+    ...STATE.locationLabels.countries,
+    ...STATE.locationLabels.cities,
+    ...STATE.locationLabels.states
+  ];
+  
+  allLabels.forEach(location => {
+    let labelFont, labelColor, labelSize;
+    
+    // 根据类型设置不同的样式
+    switch(location.type) {
+      case 'country':
+        labelFont = 'bold 18px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif';
+        labelColor = Cesium.Color.fromCssColorString('#FFD700');
+        labelSize = 18;
+        break;
+      case 'state':
+        labelFont = 'bold 14px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif';
+        labelColor = Cesium.Color.fromCssColorString('#98FB98');
+        labelSize = 14;
+        break;
+      case 'city':
+        labelFont = '13px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif';
+        labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
+        labelSize = 13;
+        break;
+      default:
+        labelFont = '13px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif';
+        labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
+        labelSize = 13;
+    }
+    
+    const entity = STATE.viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(location.lon, location.lat, 100),
+      allowPicking: false,  // 标签不可拾取，避免拦截电台圆点点击
+      label: {
+        text: location.name,
+        font: labelFont,
+        fillColor: labelColor,
+        outlineColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.8)'),
+        outlineWidth: 3,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.CENTER,
+        horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+        pixelOffset: new Cesium.Cartesian2(0, 0),
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+        show: STATE.showLocationLabels && STATE.labelVisibility[location.type],
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        // 根据类型设置不同的显示距离
+        distanceDisplayCondition: location.type === 'country' 
+          ? new Cesium.DistanceDisplayCondition(0, 30000000)
+          : location.type === 'state'
+            ? new Cesium.DistanceDisplayCondition(0, 18000000)
+            : new Cesium.DistanceDisplayCondition(0, 10000000)
+      },
+      locationType: location.type,
+      _isLocationLabel: true
+    });
+    
+    STATE.labelEntities.push(entity);
+  });
+  
+  console.log('🏷 位置标签加载完成');
+}
+
+function toggleLocationLabels() {
+  STATE.showLocationLabels = !STATE.showLocationLabels;
+  
+  // 更新所有标签的显示状态
+  STATE.labelEntities.forEach(entity => {
+    if (entity.label) {
+      entity.label.show = STATE.showLocationLabels && STATE.labelVisibility[entity.locationType];
+    }
+    if (entity.point) {
+      entity.point.show = STATE.showLocationLabels && STATE.labelVisibility[entity.locationType];
+    }
+  });
+  
+  // 更新按钮UI
+  const btn = document.getElementById('btn-location-labels');
+  if (btn) {
+    btn.classList.toggle('active', STATE.showLocationLabels);
+  }
+  
+  showToast(STATE.showLocationLabels ? '🏷 显示位置标签' : '🏷 隐藏位置标签');
+}
+
+// 切换标签层级显示
+function toggleLabelType(type) {
+  STATE.labelVisibility[type] = !STATE.labelVisibility[type];
+  
+  // 更新该类型标签的显示状态
+  STATE.labelEntities.forEach(entity => {
+    if (entity.locationType === type) {
+      if (entity.label) {
+        entity.label.show = STATE.showLocationLabels && STATE.labelVisibility[type];
+      }
+      if (entity.point) {
+        entity.point.show = STATE.showLocationLabels && STATE.labelVisibility[type];
+      }
+    }
+  });
+  
+  // 更新按钮UI
+  const btn = document.getElementById('btn-label-' + type);
+  if (btn) {
+    btn.classList.toggle('active', STATE.labelVisibility[type]);
+  }
+  
+  const typeNames = {
+    country: '国家',
+    state: '省州',
+    city: '城市'
+  };
+  showToast(STATE.labelVisibility[type] ? `🏷 显示${typeNames[type]}标签` : `🏷 隐藏${typeNames[type]}标签`);
+}
+
+// 切换底图功能
+function changeBaseMap(mapType) {
+  if (!STATE.viewer) return;
+  
+  STATE.currentBaseMap = mapType;
+  
+  // 移除所有现有图层
+  const layers = STATE.viewer.imageryLayers;
+  while (layers.length > 0) {
+    layers.remove(layers.get(0));
+  }
+  
+  let newLayer = null;
+  let newLabelLayer = null;
+  
+  try {
+    switch (mapType) {
+      case 'osm':
+        // OpenStreetMap - 高清街道地图（自带详细地名标签）
+        newLayer = layers.addImageryProvider(
+          new Cesium.OpenStreetMapImageryProvider({
+            url: 'https://tile.openstreetmap.org/',
+            maximumLevel: 19
+          })
+        );
+        showToast('🗺️ 已切换到 OpenStreetMap（带详细城市名）');
+        break;
+        
+      case 'osm-humanitarian':
+        // OpenStreetMap Humanitarian - 更清晰的地名显示
+        newLayer = layers.addImageryProvider(
+          new Cesium.OpenStreetMapImageryProvider({
+            url: 'https://a.tile.openstreetmap.fr/hot/',
+            maximumLevel: 19
+          })
+        );
+        showToast('🗺️ 已切换到 OpenStreetMap Humanitarian（高清地名）');
+        break;
+        
+      case 'ion-aerial':
+        // 使用天地图卫星影像（支持中文地名）— 如果天地图不可用则回退到 Cesium Ion
+        try {
+          newLayer = layers.addImageryProvider(
+            new Cesium.WebMapTileServiceImageryProvider({
+              url: 'https://t0.tianditu.gov.cn/img_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
+              layer: 'img',
+              style: 'default',
+              format: 'image/jpeg',
+              tileMatrixSetID: 'GoogleMapsCompatible',
+              maximumLevel: 20,
+              minimumLevel: 0,
+              tilingScheme: new Cesium.WebMercatorTilingScheme()
+            })
+          );
+          // 添加天地图中文注记层
+          newLabelLayer = layers.addImageryProvider(
+            new Cesium.WebMapTileServiceImageryProvider({
+              url: 'https://t0.tianditu.gov.cn/cia_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
+              layer: 'cia',
+              style: 'default',
+              format: 'image/png',
+              tileMatrixSetID: 'GoogleMapsCompatible',
+              maximumLevel: 20,
+              minimumLevel: 0,
+              translucent: true,
+              tilingScheme: new Cesium.WebMercatorTilingScheme()
+            })
+          );
+          showToast('🛰️ 已切换到天地图卫星影像（中文地名）');
+        } catch(e) {
+          console.warn('天地图加载失败，回退到 Cesium Ion 卫星图');
+          newLayer = layers.addImageryProvider(
+            new Cesium.IonImageryProvider({ assetId: 3, maximumLevel: 20 })
+          );
+          showToast('🛰️ 天地图不可用，已切换到 Cesium 卫星图');
+        }
+        break;
+        
+      case 'ion-street':
+        // Cesium Ion 街道地图（带标签）
+        newLayer = layers.addImageryProvider(
+          new Cesium.IonImageryProvider({ 
+            assetId: 4, 
+            maximumLevel: 20 
+          })
+        );
+        showToast('🏘️ 已切换到 Cesium 街道地图（带地名）');
+        break;
+        
+      case 'satellite':
+        // 卫星地图（无标签）
+        newLayer = layers.addImageryProvider(
+          new Cesium.IonImageryProvider({ 
+            assetId: 3, 
+            maximumLevel: 20 
+          })
+        );
+        showToast('🛰️ 已切换到高清卫星地图');
+        break;
+        
+      default:
+        // 默认使用Cesium Ion官方卫星影像（与官网一致）
+        newLayer = layers.addImageryProvider(
+          new Cesium.IonImageryProvider({ 
+            assetId: 3, 
+            maximumLevel: 20 
+          })
+        );
+        // 不添加底图标签层，使用自定义中文标签
+        if (newLabelLayer) {
+          layers.remove(newLabelLayer);
+          newLabelLayer = null;
+        }
+        showToast('🛰️ 已切换到 Cesium Ion 卫星地图');
+    }
+  } catch (error) {
+    console.error('底图加载失败:', error);
+    showToast('⚠️ 底图加载失败，使用默认地图');
+    // 出错时使用OpenStreetMap
+    newLayer = layers.addImageryProvider(
+      new Cesium.OpenStreetMapImageryProvider({
+        url: 'https://tile.openstreetmap.org/',
+        maximumLevel: 19
+      })
+    );
+  }
+  
+  if (newLayer) {
+    STATE.imageryLayer = newLayer;
+    newLayer.alpha = 1.0;
+  }
+  if (newLabelLayer) {
+    STATE.labelLayer = newLabelLayer;
+    newLabelLayer.alpha = 1.0;
+  }
+}
+
+function updateGlobeMarkers(stations) {
+  if (!STATE.viewer) return;
+  
+  // 按热度排序（clickcount + bitrate 加权）
+  stations.sort((a, b) => {
+    const scoreA = (a.clickcount || 0) + (a.bitrate || 0) + (a.votes || 0) * 10;
+    const scoreB = (b.clickcount || 0) + (b.bitrate || 0) + (b.votes || 0) * 10;
+    return scoreB - scoreA;
+  });
+  STATE.sortedStations = stations;
+  
+  // 渲染全部电台标记（仅首次创建，不随相机变化重建）
+  refreshVisibleMarkers();
+}
+
+function refreshVisibleMarkers() {
+  if (!STATE.viewer || !STATE.sortedStations) return;
+  
+  // 移除旧的 Primitive Collection
+  if (STATE.markerPrimitives) {
+    STATE.viewer.scene.primitives.remove(STATE.markerPrimitives);
+  }
+  
+  // 保留高亮实体（Entity方式），标记改用Primitive
+  STATE.entities.forEach(e => {
+    if (!e._isHighlight) STATE.viewer.entities.remove(e);
+  });
+  STATE.entities = STATE.entities.filter(e => e._isHighlight);
+  
+  // 使用 PointPrimitiveCollection 批量渲染，性能远优于逐个 Entity
+  const GREEN = Cesium.Color.fromCssColorString('#39FF14');
+  const WHITE_A = Cesium.Color.fromCssColorString('rgba(255,255,255,0.4)');
+  
+  const pointPrimitives = new Cesium.PointPrimitiveCollection();
+  // 确保该集合可被拾取
+  pointPrimitives.show = true;
+  
+  STATE.sortedStations.forEach(station => {
+    if (!station.geo_lat || !station.geo_long) return;
+    
+    pointPrimitives.add({
+      position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 2000),
+      pixelSize: 6,
+      color: GREEN.withAlpha(0.9),
+      outlineColor: WHITE_A,
+      outlineWidth: 1,
+      heightReference: Cesium.HeightReference.NONE,
+      id: station  // 官方 id 属性，scene.pick/drillPick 可直接返回 station 对象
+    });
+  });
+  
+  STATE.markerPrimitives = STATE.viewer.scene.primitives.add(pointPrimitives);
+}
+
+function addCountryBoundaries() {
+  if (!STATE.viewer) return;
+  
+  // 使用 Cesium Ion 提供的国家边界数据
+  const promise = Cesium.GeoJsonDataSource.load(
+    'https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json'
+  );
+  
+  promise.then(dataSource => {
+    STATE.boundaryDataSource = dataSource;
+    STATE.viewer.dataSources.add(dataSource);
+    
+    // 设置边界样式
+    const entities = dataSource.entities.values;
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i];
+      entity.polygon = {
+        material: Cesium.Color.TRANSPARENT,
+        outline: true,
+        outlineColor: Cesium.Color.CYAN.withAlpha(0.6),
+        outlineWidth: 2
+      };
+    }
+    
+    // 默认显示边界线
+    dataSource.show = true;
+    
+    console.log('🗺 国家边界加载完成');
+  }).catch(error => {
+    console.error('加载边界失败:', error);
+  });
+}
+
+function updateInfoIndicators() {
+  if (!STATE.viewer) return;
+  
+  try {
+    const camera = STATE.viewer.camera;
+    const position = camera.position;
+    const cartographic = Cesium.Cartographic.fromCartesian(position);
+    
+    const height = Math.max(1, Math.round(cartographic.height / 1000));
+    document.getElementById('view-height').textContent = height;
+    
+    // 估算缩放级别 - 简化计算避免错误
+    const zoomLevel = Math.max(1, Math.min(20, Math.round(10 + Math.log(20000000 / cartographic.height) / Math.LN2)));
+    document.getElementById('zoom-level').textContent = zoomLevel;
+    
+    // 比例尺 - 简化显示
+    document.getElementById('scale-label').textContent = height > 1000 ? '5000' : '100';
+    
+
+  } catch (e) {
+    // 忽略错误，不影响功能
+  }
+}
+
+
+// 统一拾取辅助函数 - 使用 drillPick 穿透获取标记，兼容 Entity 和 PointPrimitive
+function getPickedStation(position) {
+  if (!STATE.viewer) return null;
+  
+  // 优先使用 drillPick 穿透拾取，获取位置下的所有对象
+  const drillResults = STATE.viewer.scene.drillPick(position, 15);
+  if (drillResults && drillResults.length > 0) {
+    for (let i = 0; i < drillResults.length; i++) {
+      const obj = drillResults[i].id;
+      if (!obj) continue;
+      // Entity 方式: station 挂载在 entity.station
+      if (obj.station && obj.station.name) return obj.station;
+      // PointPrimitive id 属性: 直接返回 station 对象
+      if (obj.name && obj.url_resolved) return obj;
+      // PointPrimitive _station 属性（兼容旧方式）
+      if (obj._station && obj._station.name) return obj._station;
+    }
+  }
+  
+  // 回退到 scene.pick
+  const picked = STATE.viewer.scene.pick(position);
+  if (!Cesium.defined(picked)) return null;
+  if (picked.id && picked.id.station && picked.id.station.name) return picked.id.station;
+  if (picked.id && picked.id.name && picked.id.url_resolved) return picked.id;
+  if (picked.id && picked.id._station && picked.id._station.name) return picked.id._station;
+  
+  return null;
+}
+
+function showStationTooltip(position) {
+  if (!STATE.viewer) return;
+  
+  const station = getPickedStation(position);
+  if (station) {
+    const tooltip = document.getElementById('station-tooltip');
+    
+    // 设置电台信息
+    document.getElementById('tooltip-name').textContent = station.name || '未知电台';
+    document.getElementById('tooltip-country').textContent = getCountryCn(station.country);
+    document.getElementById('tooltip-lang').textContent = getLangCn(station.language);
+    
+    const tags = station.tags || '';
+    const tagList = tags.split(',').slice(0, 3);
+    const tagCn = tagList.map(t => getGenreCn(t)).join(' · ');
+    document.getElementById('tooltip-type').textContent = tagCn || '未知';
+    
+    document.getElementById('tooltip-bitrate').textContent = station.bitrate ? station.bitrate + ' kbps' : '未知';
+    
+    // 设置提示框位置（含边界检测）
+    let tx = position.x + 15;
+    let ty = position.y - 10;
+    const tw = 280, th = 180; // tooltip 估算尺寸
+    if (tx + tw > window.innerWidth) tx = position.x - tw - 15;
+    if (ty + th > window.innerHeight) ty = window.innerHeight - th - 10;
+    if (ty < 10) ty = 10;
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top = ty + 'px';
+    tooltip.classList.add('show');
+  } else {
+    hideStationTooltip();
+  }
+}
+
+function hideStationTooltip() {
+  const tooltip = document.getElementById('station-tooltip');
+  tooltip.classList.remove('show');
+}
+
+function initCesium() {
+  try {
+    document.getElementById('loading-text').textContent = '初始化 3D 地球...';
+    
+    // 添加加载超时处理
+    let loadTimeout = setTimeout(() => {
+      if (STATE.isLoading) {
+        document.getElementById('loading-text').textContent = '加载较慢，请稍后...';
+      }
+    }, 5000);
+    
+    STATE.viewer = new Cesium.Viewer('cesiumContainer', {
+      animation: false,
+      baseLayerPicker: false,
+      fullscreenButton: false,
+      vrButton: false,
+      geocoder: false,
+      homeButton: false,
+      infoBox: false,
+      sceneModePicker: false,
+      selectionIndicator: false,
+      timeline: false,
+      navigationHelpButton: false,
+      navigationInstructionsInitiallyVisible: false,
+      scene3DOnly: true,
+      // 暂时不使用复杂地形，加快加载
+      // terrainProvider: Cesium.createWorldTerrain({
+      //   requestWaterMask: true,
+      //   requestVertexNormals: true
+      // }),
+      // 优化渲染质量，同时保证加载速度
+      sceneMode: Cesium.SceneMode.SCENE3D,
+      mapProjection: new Cesium.WebMercatorProjection(),
+      targetFrameRate: 60,
+      useDefaultRenderLoop: true
+    });
+    
+    // 使用统一的底图加载函数
+    changeBaseMap(STATE.currentBaseMap);
+    
+    // 隐藏默认 credit
+    STATE.viewer.cesiumWidget.creditContainer.style.display = 'none';
+    
+    // Cesium官网风格设置
+    // 启用光照效果，使地球更立体
+    STATE.viewer.scene.globe.enableLighting = true;
+    
+    // 启用动态大气光照，模拟真实光照
+    STATE.viewer.scene.globe.dynamicAtmosphereLighting = true;
+    STATE.viewer.scene.globe.dynamicAtmosphereLightingFromSun = true;
+    
+    // 显示大气层光晕效果
+    STATE.viewer.scene.globe.showGroundAtmosphere = true;
+    
+    // 设置深蓝色太空背景（与Cesium官网一致）
+    STATE.viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#0a1628');
+    
+    // 调整大气层颜色，使其更接近官网效果
+    STATE.viewer.scene.skyAtmosphere.hueShift = -0.08;
+    STATE.viewer.scene.skyAtmosphere.saturationShift = 0.1;
+    STATE.viewer.scene.skyAtmosphere.brightnessShift = 0.05;
+    
+    // 优化远距离清晰度
+    STATE.viewer.scene.globe.maximumScreenSpaceError = 2; // 更小的值意味着更清晰
+    STATE.viewer.scene.globe.tileCacheSize = 1000; // 增大缓存，加快加载
+    STATE.viewer.scene.globe.fractionalZoom = true; // 启用分数缩放，平滑过渡
+    STATE.viewer.scene.globe.baseColor = Cesium.Color.WHITE; // 设置基础颜色
+    
+    // 启用深度测试，确保标记固定在地球表面而非飘在空中
+    STATE.viewer.scene.globe.depthTestAgainstTerrain = true;
+    
+    // 缩放级别由底图 provider 的 maximumLevel 控制，不再直接访问内部API
+    
+    // 监听第一次渲染完成，然后隐藏加载界面
+    STATE.viewer.scene.postRender.addEventListener(() => {
+      if (STATE.isLoading) {
+        clearTimeout(loadTimeout);
+        STATE.isLoading = false;
+        document.getElementById('loading-overlay').style.display = 'none';
+        
+        // 继续添加其他功能
+        addLocationLabels();
+        
+        console.log('✅ 初始化完成');
+      }
+    });
+    
+    // 设置相机初始位置 - 中国版图
+    STATE.viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(104.1954, 35.8617, 15000000),
+      duration: 0
+    });
+    
+    // 相机移动时更新信息
+    STATE.viewer.camera.changed.addEventListener(() => {
+      updateInfoIndicators();
+    });
+    
+
+    
+    // 点击标记选择电台
+    const handler = new Cesium.ScreenSpaceEventHandler(STATE.viewer.scene.canvas);
+    handler.setInputAction(movement => {
+      const station = getPickedStation(movement.position);
+      if (station) selectStation(station);
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    
+    // 鼠标移动显示电台信息
+    handler.setInputAction(movement => {
+      showStationTooltip(movement.endPosition);
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+    
+    // 鼠标离开画布隐藏提示框
+    handler.setInputAction(() => {
+      hideStationTooltip();
+    }, Cesium.ScreenSpaceEventType.LEFT_UP);
+    
+    // 初始化信息
+    updateInfoIndicators();
+    
+  } catch (error) {
+    console.error('❌ Cesium 初始化失败:', error);
+    document.getElementById('loading-text').textContent = '初始化失败';
+    document.getElementById('loading-error').textContent = error.message;
+  }
+}
+
+async function loadStations() {
+  try {
+    document.getElementById('loading-text').textContent = '加载电台数据...';
+    
+    // 首先尝试从API加载
+    await loadStationsFromAPI();
+    
+  } catch (error) {
+    console.error('❌ 加载电台失败:', error);
+    showToast('⚠️ 电台数据加载失败');
+    // 如果API失败，使用本地示例数据
+    loadSampleStations();
+  }
+}
+
+// ================================
+// 初始化
+// ================================
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 Global Radio 启动中...');
+  
+  // 初始化音频播放器
+  initAudioPlayer();
+  
+  // 初始化 Cesium
+  initCesium();
+  
+  // 加载电台数据
+  loadStations();
+  
+  // 初始化书签
+  renderBookmarks();
+  
+  // 初始化收藏和历史
+  renderFavorites();
+  renderHistory();
+});
+
+// 页面卸载清理 - 防止内存泄漏
+window.addEventListener('beforeunload', function() {
+  // 停止音频播放
+  if (STATE.audio) {
+    STATE.audio.pause();
+    STATE.audio.src = '';
+  }
+  // 销毁 HLS 实例
+  if (STATE.hls) {
+    STATE.hls.destroy();
+  }
+  // 停止波形动画
+  if (waveformAnimationId) {
+    cancelAnimationFrame(waveformAnimationId);
+  }
+  // 清除倒计时
+  if (timerInterval) {
+    clearInterval(timerInterval);
+  }
+  // 销毁 Cesium Viewer
+  if (STATE.viewer) {
+    STATE.viewer.destroy();
+  }
+});
+</script>
+</body>
+</html>
