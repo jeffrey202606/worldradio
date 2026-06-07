@@ -1868,16 +1868,23 @@
       #player-bar { padding: 10px 12px; gap: 8px; }
       .info-indicators { display: none; }
       /* [Req 1] 顶端2行布局: logo完整显示 + 导航第二行 */
-      #topbar { flex-wrap: wrap; height: auto !important; padding: 8px 14px !important; gap: 6px !important; }
+      #topbar {
+        flex-wrap: wrap; height: auto !important; padding: 10px 14px 6px !important; gap: 6px !important;
+        background: rgba(8, 12, 24, 0.85) !important;
+        border-color: rgba(0,212,255,0.1) !important;
+      }
       .logo { flex: 1; }
       .logo-text { display: inline !important; font-size: 13px; letter-spacing: 2px; }
       .continent-nav {
         order: 3; width: 100%; flex-wrap: nowrap; margin-left: 0;
         overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
-        padding: 2px 0;
+        padding: 4px 0 2px;
+        border-top: 1px solid rgba(255,255,255,0.06);
+        margin-top: 2px;
       }
       .continent-nav::-webkit-scrollbar { display: none; }
-      .nav-link { white-space: nowrap; flex-shrink: 0; padding: 7px 10px; font-size: 11px; }
+      .nav-link { white-space: nowrap; flex-shrink: 0; padding: 7px 10px; font-size: 11px; border-radius: 10px; }
+      .nav-link.active { background: rgba(0,212,255,0.12) !important; }
       /* 触控目标 */
       .icon-btn { min-width: 40px; min-height: 40px; }
       /* 隐藏非核心图标 */
@@ -5088,41 +5095,48 @@ function addLocationLabels() {
     ...STATE.locationLabels.states
   ];
   
+  const isMobileLabels = window.innerWidth <= 900;
+  
   allLabels.forEach(location => {
-    let labelFont, labelColor, labelSize;
+    let labelFont, labelColor, labelSize, labelOutlineW;
     
-    // 根据类型设置不同的样式
+    // 根据类型设置不同的样式 (移动端放大 1.4x)
+    const scale = isMobileLabels ? 1.4 : 1;
     switch(location.type) {
       case 'country':
-        labelFont = 'bold 18px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif';
+        labelFont = `bold ${Math.round(18*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#FFD700');
-        labelSize = 18;
+        labelSize = Math.round(18*scale);
+        labelOutlineW = isMobileLabels ? 5 : 3;
         break;
       case 'state':
-        labelFont = 'bold 14px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif';
+        labelFont = `bold ${Math.round(14*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#98FB98');
-        labelSize = 14;
+        labelSize = Math.round(14*scale);
+        labelOutlineW = isMobileLabels ? 4 : 3;
         break;
       case 'city':
-        labelFont = '13px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif';
+        labelFont = `${Math.round(13*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
-        labelSize = 13;
+        labelSize = Math.round(13*scale);
+        labelOutlineW = isMobileLabels ? 4 : 3;
         break;
       default:
-        labelFont = '13px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif';
+        labelFont = `${Math.round(13*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
-        labelSize = 13;
+        labelSize = Math.round(13*scale);
+        labelOutlineW = isMobileLabels ? 4 : 3;
     }
     
     const entity = STATE.viewer.entities.add({
       position: Cesium.Cartesian3.fromDegrees(location.lon, location.lat, 100),
-      allowPicking: false,  // 标签不可拾取，避免拦截电台圆点点击
+      allowPicking: false,
       label: {
         text: location.name,
         font: labelFont,
         fillColor: labelColor,
-        outlineColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.8)'),
-        outlineWidth: 3,
+        outlineColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.9)'),
+        outlineWidth: labelOutlineW,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
         verticalOrigin: Cesium.VerticalOrigin.CENTER,
         horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
@@ -5130,12 +5144,11 @@ function addLocationLabels() {
         heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
         show: STATE.showLocationLabels && STATE.labelVisibility[location.type],
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
-        // 根据类型设置不同的显示距离
         distanceDisplayCondition: location.type === 'country' 
-          ? new Cesium.DistanceDisplayCondition(0, 30000000)
+          ? new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 40000000 : 30000000)
           : location.type === 'state'
-            ? new Cesium.DistanceDisplayCondition(0, 18000000)
-            : new Cesium.DistanceDisplayCondition(0, 10000000)
+            ? new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 25000000 : 18000000)
+            : new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 15000000 : 10000000)
       },
       locationType: location.type,
       _isLocationLabel: true
@@ -5365,13 +5378,13 @@ function refreshVisibleMarkers() {
   });
   STATE.entities = STATE.entities.filter(e => e._isHighlight);
   
-  // 亮绿色单色标记 — 移动端加大显示
+  // 亮绿色单色标记 — 移动端加大 + 辉光描边
   const GREEN = Cesium.Color.fromCssColorString('#39FF14');
   const WHITE_A = Cesium.Color.fromCssColorString('rgba(255,255,255,0.35)');
   const isMobile = window.innerWidth <= 900;
-  const dotSize = isMobile ? 12 : 7;
-  const dotOutlineW = isMobile ? 2 : 1;
-  const dotOutlineColor = isMobile ? Cesium.Color.fromCssColorString('rgba(57,255,20,0.35)') : WHITE_A;
+  const dotSize = isMobile ? 14 : 7;
+  const dotOutlineW = isMobile ? 3 : 1;
+  const dotOutlineColor = isMobile ? Cesium.Color.fromCssColorString('rgba(57,255,20,0.5)') : WHITE_A;
   
   const pointPrimitives = new Cesium.PointPrimitiveCollection();
   pointPrimitives.show = true;
@@ -5594,6 +5607,14 @@ function initCesium() {
     
     // 启用深度测试，确保标记固定在地球表面而非飘在空中
     STATE.viewer.scene.globe.depthTestAgainstTerrain = true;
+    
+    // [移动端增强] 提亮地球纹理可见度
+    if (window.innerWidth <= 900) {
+      STATE.viewer.scene.globe.enableLighting = false; // 关闭昼夜光照，让全地球都明亮
+      STATE.viewer.scene.skyAtmosphere.brightnessShift = 0.15; // 更亮的大气
+      STATE.viewer.scene.fog.minimumBrightness = 0.06;
+      STATE.viewer.scene.globe.maximumScreenSpaceError = 1.5; // 更清晰
+    }
     
     // 缩放级别由底图 provider 的 maximumLevel 控制，不再直接访问内部API
     
