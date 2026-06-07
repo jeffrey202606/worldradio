@@ -1867,33 +1867,29 @@
       .spectrum-container { display: none; }
       #player-bar { padding: 10px 12px; gap: 8px; }
       .info-indicators { display: none; }
-      /* [Req 1] 顶端2行布局: logo完整显示 + 导航第二行 */
+      /* [Req 1] 顶端布局: logo居中 + 导航2行 */
       #topbar {
         flex-wrap: wrap; height: auto !important; padding: 10px 14px 6px !important; gap: 6px !important;
         background: rgba(8, 12, 24, 0.85) !important;
         border-color: rgba(0,212,255,0.1) !important;
+        justify-content: center;
       }
-      .logo { flex: 1; }
+      .logo { flex: 0 1 auto; }
       .logo-text { display: inline !important; font-size: 13px; letter-spacing: 2px; }
       .continent-nav {
-        order: 3; width: 100%; flex-wrap: nowrap; margin-left: 0;
-        overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        order: 3; width: 100%; flex-wrap: wrap; margin-left: 0;
+        justify-content: center; gap: 2px !important;
         padding: 4px 0 2px;
         border-top: 1px solid rgba(255,255,255,0.06);
         margin-top: 2px;
       }
-      .continent-nav::-webkit-scrollbar { display: none; }
       .nav-link { white-space: nowrap; flex-shrink: 0; padding: 7px 10px; font-size: 11px; border-radius: 10px; }
       .nav-link.active { background: rgba(0,212,255,0.12) !important; }
       /* 触控目标 */
       .icon-btn { min-width: 40px; min-height: 40px; }
-      /* 隐藏非核心图标 */
+      /* 隐藏非核心图标 + 菜单按钮 */
       #stats-btn, #trending-btn { display: none !important; }
-      /* 移动端搜索按钮 */
-      #mobile-search-btn { display: flex !important; }
-      #hamburger-btn { display: flex !important; }
-      /* [此行移除] 移动端隐藏全部图标按钮行，仅保留 logo + 洲际导航 */
-      #mobile-search-btn, #bookmark-btn, #login-btn, #daynight-btn { display: none !important; }
+      #mobile-search-btn, #bookmark-btn, #login-btn, #daynight-btn, #hamburger-btn { display: none !important; }
       /* [Req 3] 手机端去掉欢迎首页 */
       #welcome-page { display: none !important; }
     }
@@ -1902,9 +1898,12 @@
       .logo-text { font-size: 12px !important; letter-spacing: 1.5px !important; display: inline !important; }
       .logo-icon { width: 30px; height: 30px; font-size: 15px; }
       .nav-link { padding: 6px 9px; font-size: 11px; }
-      /* [Req 2] 播放器: extras+音量合并为一行 */
+      /* 播放器: 电台名称和电台信息双行显示 */
       #player-bar { gap: 6px; flex-direction: column; padding: 8px 12px !important; }
       .player-top-row { flex-wrap: wrap; }
+      .now-playing-info { min-width: 0; }
+      .now-playing-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; line-height: 1.3; }
+      .meta-inline { display: block !important; font-size: 11px !important; color: rgba(255,255,255,0.4) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
       .player-bottom-row {
         display: flex !important;
         align-items: center;
@@ -3274,7 +3273,6 @@ async function loadStationsFromAPI() {
       })
     ).catch(() => RADIO_SERVERS[0]);
 
-    let international = [];
     const countryList = [
       'JP','KR','IN','TH','VN','ID','MY','PH','SG','TW','HK','PK','BD','LK','NP','MM','KH','LA','MN',
       'GB','DE','FR','IT','ES','NL','SE','NO','DK','FI','AT','CH','PL','RU','UA','BE','PT','GR','CZ','RO','HU','IE','RS','HR','BG','SK','SI','LT','LV','EE',
@@ -3283,16 +3281,21 @@ async function loadStationsFromAPI() {
       'AU','NZ','FJ','PG'
     ];
     
-    // 全部并行获取（每国最多40个电台，超时5秒自动跳过）
+    // 分批并行获取（每批15个，避免移动端连接数溢出）
     const PER_COUNTRY = 40;
-    const results = await Promise.allSettled(
-      countryList.map(cc => fetchStationsByCountry(server, cc, PER_COUNTRY))
-    );
-    results.forEach(r => {
-      if (r.status === 'fulfilled' && r.value.length > 0) {
-        international = international.concat(r.value);
-      }
-    });
+    const BATCH_SIZE = 15;
+    let international = [];
+    for (let i = 0; i < countryList.length; i += BATCH_SIZE) {
+      const batch = countryList.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(cc => fetchStationsByCountry(server, cc, PER_COUNTRY))
+      );
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value.length > 0) {
+          international = international.concat(r.value);
+        }
+      });
+    }
     
     // 补充全球热门电台
     try {
@@ -3520,8 +3523,10 @@ function getChineseStations() {
 // 按国家获取电台
 async function fetchStationsByCountry(server, countryCode, limit = 20) {
   try {
+    const isMobileFetch = window.innerWidth <= 900;
+    const timeout = isMobileFetch ? 8000 : 5000;
     const url = `${server}/json/stations/bycountrycodeexact/${countryCode}?limit=${limit}&order=clickcount&reverse=true`;
-    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const response = await fetch(url, { signal: AbortSignal.timeout(timeout) });
     const data = await response.json();
     return data;
   } catch (error) {
@@ -5373,13 +5378,12 @@ function refreshVisibleMarkers() {
   });
   STATE.entities = STATE.entities.filter(e => e._isHighlight);
   
-  // 高清亮绿色标记 — 单色纯绿 + 深色描边（防锯齿，高清边缘）
-  const GREEN = Cesium.Color.fromCssColorString('#00FF41'); // 纯亮绿
-  const DARK_OUTLINE = Cesium.Color.fromCssColorString('rgba(0,40,0,0.7)'); // 深绿描边
+  // 高清亮绿色标记 — 纯色无外线
+  const GREEN = Cesium.Color.fromCssColorString('#00FF41');
   const isMobile = window.innerWidth <= 900;
-  const dotSize = isMobile ? 12 : 8;
-  const dotOutlineW = isMobile ? 2 : 1;
-  const dotOutlineColor = DARK_OUTLINE;
+  const dotSize = isMobile ? 10 : 7;
+  const dotOutlineW = 0;
+  const dotOutlineColor = Cesium.Color.TRANSPARENT;
   
   const pointPrimitives = new Cesium.PointPrimitiveCollection();
   pointPrimitives.show = true;
