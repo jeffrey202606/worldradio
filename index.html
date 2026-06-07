@@ -1889,9 +1889,11 @@
       .icon-btn { min-width: 40px; min-height: 40px; }
       /* 隐藏非核心图标 */
       #stats-btn, #trending-btn { display: none !important; }
-      /* 显示移动端搜索按钮 */
+      /* 移动端搜索按钮 */
       #mobile-search-btn { display: flex !important; }
       #hamburger-btn { display: flex !important; }
+      /* [此行移除] 移动端隐藏全部图标按钮行，仅保留 logo + 洲际导航 */
+      #mobile-search-btn, #bookmark-btn, #login-btn, #daynight-btn { display: none !important; }
       /* [Req 3] 手机端去掉欢迎首页 */
       #welcome-page { display: none !important; }
     }
