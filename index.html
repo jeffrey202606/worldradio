@@ -985,6 +985,9 @@
       gap: 14px;
       width: 100%;
     }
+    .player-bottom-row {
+      display: contents;
+    }
     
     .now-playing { 
       display: flex; 
@@ -1864,41 +1867,56 @@
       .spectrum-container { display: none; }
       #player-bar { padding: 10px 12px; gap: 8px; }
       .info-indicators { display: none; }
-      /* [Fix #1] 导航栏横向滚动防溢出 */
-      .continent-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-shrink: 0; }
+      /* [Req 1] 顶端2行布局: logo完整显示 + 导航第二行 */
+      #topbar { flex-wrap: wrap; height: auto !important; padding: 8px 14px !important; gap: 6px !important; }
+      .logo { flex: 1; }
+      .logo-text { display: inline !important; font-size: 13px; letter-spacing: 2px; }
+      .continent-nav {
+        order: 3; width: 100%; flex-wrap: nowrap; margin-left: 0;
+        overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        padding: 2px 0;
+      }
       .continent-nav::-webkit-scrollbar { display: none; }
-      .nav-link { white-space: nowrap; flex-shrink: 0; }
-      .logo-text { display: none; }
-      /* [Fix #4] 触控目标增大 */
-      .nav-link { padding: 9px 11px; }
+      .nav-link { white-space: nowrap; flex-shrink: 0; padding: 7px 10px; font-size: 11px; }
+      /* 触控目标 */
       .icon-btn { min-width: 40px; min-height: 40px; }
-      /* [Fix #10] 隐藏非核心图标，收入侧栏 */
+      /* 隐藏非核心图标 */
       #stats-btn, #trending-btn { display: none !important; }
-      /* [Fix #5] 显示移动端搜索按钮 */
+      /* 显示移动端搜索按钮 */
       #mobile-search-btn { display: flex !important; }
-      .volume-percent { display: none; }
       #hamburger-btn { display: flex !important; }
+      /* [Req 3] 手机端去掉欢迎首页 */
+      #welcome-page { display: none !important; }
     }
     @media (max-width: 600px) {
-      #topbar { padding: 0 12px; gap: 8px; }
-      /* [Fix #11] 字体放大提升可读性 */
-      .logo-text { font-size: 12px; letter-spacing: 1.5px; display: none; }
-      .nav-link { padding: 8px 10px; font-size: 12px; }
-      /* [Fix #2] 播放器两行布局 */
-      #player-bar { gap: 6px; flex-direction: column; padding: 10px 14px !important; }
+      #topbar { padding: 6px 10px !important; gap: 4px !important; }
+      .logo-text { font-size: 12px !important; letter-spacing: 1.5px !important; display: inline !important; }
+      .logo-icon { width: 30px; height: 30px; font-size: 15px; }
+      .nav-link { padding: 6px 9px; font-size: 11px; }
+      /* [Req 2] 播放器: extras+音量合并为一行 */
+      #player-bar { gap: 6px; flex-direction: column; padding: 8px 12px !important; }
       .player-top-row { flex-wrap: wrap; }
-      .player-extras { width: 100%; justify-content: center; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); }
-      /* [Fix #4] 触控目标 44px */
+      .player-bottom-row {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        width: 100%;
+        padding-top: 6px;
+        border-top: 1px solid rgba(255,255,255,0.05);
+      }
+      .player-extras { gap: 2px; }
+      /* 触控目标 44px */
       .control-btn { min-width: 44px; min-height: 44px; }
-      .extra-btn { width: 40px; height: 40px; font-size: 16px; }
+      .extra-btn { width: 38px; height: 38px; font-size: 15px; }
       .icon-btn { min-width: 44px; min-height: 44px; font-size: 18px; }
-      /* [Fix #7] 收藏按钮保持可见 */
+      /* 收藏按钮保持可见 */
       .control-btn.secondary#btn-fav { display: inline-flex !important; }
       .control-btn.secondary:not(#btn-fav) { display: none; }
-      /* [Fix #6] 音量滑块加宽 */
+      /* 音量滑块 */
       .volume-slider-wrapper { width: 80px !important; }
       .volume-percent { display: inline !important; font-size: 10px; }
-      .now-playing-cover { width: 40px; height: 40px; }
+      .now-playing-cover { width: 38px; height: 38px; }
       .now-playing-name { font-size: 13px; }
     }
     /* 移动端搜索浮层 */
@@ -2208,8 +2226,8 @@
     
     /* 移动端适配 */
     @media (max-width: 900px) {
-      /* [Fix #3] Safe Area */
-      #topbar { left: 12px !important; right: 12px !important; top: calc(12px + env(safe-area-inset-top, 0px)) !important; }
+      /* [Fix #3] Safe Area + 2行布局 */
+      #topbar { left: 12px !important; right: 12px !important; top: calc(12px + env(safe-area-inset-top, 0px)) !important; height: auto !important; }
       #panel-left { left: 0 !important; top: 0 !important; width: 85vw !important; max-width: 320px !important; border-radius: 0 20px 20px 0 !important; }
       #player-bar { min-width: 90% !important; max-width: 95% !important; bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important; padding: 10px 16px !important; }
       .info-indicators { display: none !important; }
@@ -2668,18 +2686,20 @@
         <button class="control-btn primary" id="play-btn" onclick="togglePlay()">▶</button>
         <button class="control-btn secondary" id="btn-fav" onclick="toggleFavorite()" title="收藏">🤍</button>
       </div>
-      <div class="player-extras">
-        <button class="extra-btn" id="sleep-btn" onclick="toggleSleepMenu(event)" title="睡眠定时器">🌙</button>
-        <button class="extra-btn" id="eq-btn" onclick="toggleEQPanel()" title="均衡器">🎛️</button>
-        <button class="extra-btn" id="share-btn" onclick="openShareModal()" title="分享电台">📤</button>
-      </div>
-      <div class="volume-control">
-        <button class="volume-btn" id="volume-btn" onclick="toggleMute()">🔊</button>
-        <div class="volume-slider-wrapper">
-          <div class="volume-fill" id="volume-fill" style="width: 80%;"></div>
-          <input type="range" min="0" max="100" value="80" id="volume-slider" oninput="setVolume(this.value)">
+      <div class="player-bottom-row">
+        <div class="player-extras">
+          <button class="extra-btn" id="sleep-btn" onclick="toggleSleepMenu(event)" title="睡眠定时器">🌙</button>
+          <button class="extra-btn" id="eq-btn" onclick="toggleEQPanel()" title="均衡器">🎛️</button>
+          <button class="extra-btn" id="share-btn" onclick="openShareModal()" title="分享电台">📤</button>
         </div>
-        <span class="volume-percent" id="vol-label">80</span>
+        <div class="volume-control">
+          <button class="volume-btn" id="volume-btn" onclick="toggleMute()">🔊</button>
+          <div class="volume-slider-wrapper">
+            <div class="volume-fill" id="volume-fill" style="width: 80%;"></div>
+            <input type="range" min="0" max="100" value="80" id="volume-slider" oninput="setVolume(this.value)">
+          </div>
+          <span class="volume-percent" id="vol-label">80</span>
+        </div>
       </div>
     </div>
   </div>
@@ -4674,15 +4694,16 @@ function highlightStation(station) {
   STATE.entities = STATE.entities.filter(e => !e._isHighlight && !e._isPulse);
   
   const GREEN = Cesium.Color.fromCssColorString('#39FF14');
+  const isMobHL = window.innerWidth <= 900;
   
-  // 高亮圆点 — 大号亮绿色点
+  // 高亮圆点 — 大号亮绿色点 (移动端更大)
   const dot = STATE.viewer.entities.add({
     position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 2000),
     point: {
-      pixelSize: 18,
+      pixelSize: isMobHL ? 24 : 18,
       color: GREEN,
       outlineColor: Cesium.Color.WHITE,
-      outlineWidth: 3,
+      outlineWidth: isMobHL ? 4 : 3,
       heightReference: Cesium.HeightReference.NONE,
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     },
@@ -4691,10 +4712,10 @@ function highlightStation(station) {
       font: 'bold 14px "Microsoft YaHei", -apple-system, sans-serif',
       fillColor: GREEN,
       outlineColor: Cesium.Color.BLACK,
-      outlineWidth: 3,
+      outlineWidth: isMobHL ? 4 : 3,
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
       verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-      pixelOffset: new Cesium.Cartesian2(0, -18),
+      pixelOffset: new Cesium.Cartesian2(0, isMobHL ? -24 : -18),
       heightReference: Cesium.HeightReference.NONE,
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     },
@@ -4858,12 +4879,13 @@ function flyToContinent(continent, btnEl) {
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
   if (btnEl) btnEl.classList.add('active');
   
+  const isMob = window.innerWidth <= 900;
   const viewpoints = {
-    global: { lon: 0, lat: 20, height: 22000000 },
-    asia: { lon: 100, lat: 30, height: 12000000 },
+    global: { lon: 0, lat: isMob ? 28 : 20, height: isMob ? 24000000 : 22000000 },
+    asia: { lon: 100, lat: isMob ? 38 : 30, height: 12000000 },
     europe: { lon: 15, lat: 50, height: 8000000 },
-    america: { lon: -90, lat: 20, height: 12000000 },
-    africa: { lon: 20, lat: 10, height: 10000000 },
+    america: { lon: -90, lat: isMob ? 28 : 20, height: 12000000 },
+    africa: { lon: 20, lat: isMob ? 18 : 10, height: 10000000 },
     oceania: { lon: 135, lat: -25, height: 10000000 }
   };
   const names = { global: '全球', asia: '亚洲', europe: '欧洲', america: '美洲', africa: '非洲', oceania: '大洋洲' };
@@ -5343,9 +5365,13 @@ function refreshVisibleMarkers() {
   });
   STATE.entities = STATE.entities.filter(e => e._isHighlight);
   
-  // 亮绿色单色标记
+  // 亮绿色单色标记 — 移动端加大显示
   const GREEN = Cesium.Color.fromCssColorString('#39FF14');
   const WHITE_A = Cesium.Color.fromCssColorString('rgba(255,255,255,0.35)');
+  const isMobile = window.innerWidth <= 900;
+  const dotSize = isMobile ? 12 : 7;
+  const dotOutlineW = isMobile ? 2 : 1;
+  const dotOutlineColor = isMobile ? Cesium.Color.fromCssColorString('rgba(57,255,20,0.35)') : WHITE_A;
   
   const pointPrimitives = new Cesium.PointPrimitiveCollection();
   pointPrimitives.show = true;
@@ -5355,10 +5381,10 @@ function refreshVisibleMarkers() {
     
     pointPrimitives.add({
       position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 2000),
-      pixelSize: 7,
+      pixelSize: dotSize,
       color: GREEN,
-      outlineColor: WHITE_A,
-      outlineWidth: 1,
+      outlineColor: dotOutlineColor,
+      outlineWidth: dotOutlineW,
       heightReference: Cesium.HeightReference.NONE,
       id: station
     });
@@ -5585,9 +5611,10 @@ function initCesium() {
       }
     });
     
-    // 设置相机初始位置 - 中国版图
+    // 设置相机初始位置 - 中国版图 (移动端上移避开播放器遮挡)
+    const isMobileCam = window.innerWidth <= 900;
     STATE.viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(104.1954, 35.8617, 15000000),
+      destination: Cesium.Cartesian3.fromDegrees(104.1954, isMobileCam ? 42 : 35.8617, isMobileCam ? 16500000 : 15000000),
       duration: 0
     });
     
@@ -5699,6 +5726,14 @@ function enterMainApp() {
     window.dispatchEvent(new Event('resize'));
   }, 800);
 }
+
+// [Req 3] 手机端自动跳过欢迎页
+(function() {
+  if (window.innerWidth <= 900) {
+    const page = document.getElementById('welcome-page');
+    if (page) { page.classList.add('hidden'); }
+  }
+})();
 
 </script>
 
