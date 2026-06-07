@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="全球电台 - 基于3D地球的世界广播播放器，覆盖60+国家/地区，支持搜索、收藏、EQ均衡器等功能">
   <meta name="keywords" content="全球电台,网络收音机,世界广播,在线电台,3D地球,CesiumJS">
   <meta name="author" content="World Radio">
@@ -1864,21 +1864,69 @@
       .spectrum-container { display: none; }
       #player-bar { padding: 10px 12px; gap: 8px; }
       .info-indicators { display: none; }
-      .continent-nav { gap: 0; }
-      .nav-link { padding: 7px 10px; font-size: 11px; }
-      .volume-control { min-width: 60px; }
+      /* [Fix #1] 导航栏横向滚动防溢出 */
+      .continent-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-shrink: 0; }
+      .continent-nav::-webkit-scrollbar { display: none; }
+      .nav-link { white-space: nowrap; flex-shrink: 0; }
+      .logo-text { display: none; }
+      /* [Fix #4] 触控目标增大 */
+      .nav-link { padding: 9px 11px; }
+      .icon-btn { min-width: 40px; min-height: 40px; }
+      /* [Fix #10] 隐藏非核心图标，收入侧栏 */
+      #stats-btn, #trending-btn { display: none !important; }
+      /* [Fix #5] 显示移动端搜索按钮 */
+      #mobile-search-btn { display: flex !important; }
       .volume-percent { display: none; }
       #hamburger-btn { display: flex !important; }
     }
     @media (max-width: 600px) {
       #topbar { padding: 0 12px; gap: 8px; }
-      .logo-text { font-size: 12px; letter-spacing: 1.5px; }
-      .nav-link { padding: 6px 7px; font-size: 10px; }
-      .control-btn.secondary { display: none; }
-      .volume-slider-wrapper { width: 50px; }
-      #player-bar { gap: 6px; }
-      .now-playing-cover { width: 36px; height: 36px; }
-      .now-playing-name { font-size: 12px; }
+      /* [Fix #11] 字体放大提升可读性 */
+      .logo-text { font-size: 12px; letter-spacing: 1.5px; display: none; }
+      .nav-link { padding: 8px 10px; font-size: 12px; }
+      /* [Fix #2] 播放器两行布局 */
+      #player-bar { gap: 6px; flex-direction: column; padding: 10px 14px !important; }
+      .player-top-row { flex-wrap: wrap; }
+      .player-extras { width: 100%; justify-content: center; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); }
+      /* [Fix #4] 触控目标 44px */
+      .control-btn { min-width: 44px; min-height: 44px; }
+      .extra-btn { width: 40px; height: 40px; font-size: 16px; }
+      .icon-btn { min-width: 44px; min-height: 44px; font-size: 18px; }
+      /* [Fix #7] 收藏按钮保持可见 */
+      .control-btn.secondary#btn-fav { display: inline-flex !important; }
+      .control-btn.secondary:not(#btn-fav) { display: none; }
+      /* [Fix #6] 音量滑块加宽 */
+      .volume-slider-wrapper { width: 80px !important; }
+      .volume-percent { display: inline !important; font-size: 10px; }
+      .now-playing-cover { width: 40px; height: 40px; }
+      .now-playing-name { font-size: 13px; }
+    }
+    /* 移动端搜索浮层 */
+    #mobile-search-btn { display: none; }
+    #mobile-search-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0;
+      z-index: 2100;
+      background: rgba(8,12,24,0.97);
+      backdrop-filter: blur(30px) saturate(200%);
+      -webkit-backdrop-filter: blur(30px) saturate(200%);
+      padding: 16px;
+      padding-top: calc(16px + env(safe-area-inset-top, 0px));
+      animation: mobileSearchIn 0.3s ease;
+    }
+    #mobile-search-overlay.show { display: block; }
+    @keyframes mobileSearchIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    .mobile-search-header { display: flex; align-items: center; gap: 10px; }
+    .mobile-search-header input {
+      flex: 1; height: 44px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px; padding: 0 16px; color: #fff; font-size: 15px; outline: none;
+      font-family: var(--font-sans);
+    }
+    .mobile-search-header input:focus { border-color: rgba(0,212,255,0.3); background: rgba(255,255,255,0.1); }
+    .mobile-search-header input::placeholder { color: rgba(255,255,255,0.3); }
+    .mobile-search-close {
+      width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.06); border: none; border-radius: 12px;
+      color: rgba(255,255,255,0.6); font-size: 18px; cursor: pointer;
     }
     /* 移动端遮罩 */
     #mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 1999; backdrop-filter: blur(4px); }
@@ -2160,10 +2208,29 @@
     
     /* 移动端适配 */
     @media (max-width: 900px) {
-      #topbar { left: 12px !important; right: 12px !important; top: 12px !important; }
+      /* [Fix #3] Safe Area */
+      #topbar { left: 12px !important; right: 12px !important; top: calc(12px + env(safe-area-inset-top, 0px)) !important; }
       #panel-left { left: 0 !important; top: 0 !important; width: 85vw !important; max-width: 320px !important; border-radius: 0 20px 20px 0 !important; }
-      #player-bar { min-width: 90% !important; max-width: 95% !important; bottom: 16px !important; padding: 10px 16px !important; }
+      #player-bar { min-width: 90% !important; max-width: 95% !important; bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important; padding: 10px 16px !important; }
       .info-indicators { display: none !important; }
+      /* [Fix #8] 下拉菜单改为底部弹出 (bottom-sheet) */
+      .sleep-dropdown, .sleep-countdown {
+        top: auto !important; bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+        left: 50% !important; transform: translateX(-50%) !important;
+        width: 220px !important; border-radius: 16px !important;
+      }
+      .dropdown-menu {
+        bottom: 56px !important; max-height: 60vh; overflow-y: auto;
+      }
+    }
+    /* [Fix #12] 横屏适配 */
+    @media (max-height: 500px) and (orientation: landscape) {
+      #topbar { height: 42px !important; top: calc(6px + env(safe-area-inset-top, 0px)) !important; }
+      #player-bar { bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important; padding: 6px 14px !important; border-radius: 16px !important; }
+      .now-playing-cover { width: 32px !important; height: 32px !important; }
+      .player-extras { display: none !important; }
+      .continent-nav { max-height: 34px; }
+      .nav-link { padding: 5px 8px !important; font-size: 11px !important; }
     }
 
 
@@ -2186,7 +2253,7 @@
     }
     #welcome-page .welcome-hint {
       position: absolute;
-      bottom: 28px;
+      bottom: calc(28px + env(safe-area-inset-bottom, 0px));
       left: 50%;
       transform: translateX(-50%);
       color: rgba(255,255,255,0.5);
@@ -2421,6 +2488,8 @@
       <button class="nav-link" onclick="flyToContinent('oceania',this)">大洋洲 <span class="nav-count" id="nc-oceania">—</span></button>
     </nav>
     <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+      <!-- 移动端搜索按钮 -->
+      <button class="icon-btn" id="mobile-search-btn" onclick="toggleMobileSearch()" title="搜索" aria-label="搜索">🔍</button>
       <!-- 收藏按钮 -->
       <button class="icon-btn" id="stats-btn" onclick="openStatsModal()" title="收听统计">📊</button>
       <button class="icon-btn" id="trending-btn" onclick="openTrendingPanel()" title="全球热门">🔥</button>
@@ -2522,6 +2591,14 @@
     <div class="unified-panel-footer"><span><strong id="stat-total">0</strong> 电台 · <strong id="stat-online">0</strong> 国家</span></div>
   </aside>
   <div id="mobile-overlay" onclick="toggleMobilePanel()"></div>
+
+  <!-- 移动端搜索浮层 -->
+  <div id="mobile-search-overlay">
+    <div class="mobile-search-header">
+      <input type="text" id="mobile-search-input" placeholder="搜索电台、语言、国家..." oninput="searchStations(this.value)">
+      <button class="mobile-search-close" onclick="toggleMobileSearch()">✕</button>
+    </div>
+  </div>
   
   <main id="globe-container">
     <div id="loading-overlay">
@@ -4715,6 +4792,28 @@ function toggleMobilePanel() {
   if (!panel) return;
   const isOpen = panel.classList.toggle('mobile-open');
   if (overlay) overlay.classList.toggle('show', isOpen);
+}
+
+// [Fix #5] 移动端搜索浮层
+function toggleMobileSearch() {
+  const overlay = document.getElementById('mobile-search-overlay');
+  const input = document.getElementById('mobile-search-input');
+  if (!overlay) return;
+  const isShowing = overlay.classList.toggle('show');
+  if (isShowing && input) {
+    setTimeout(() => input.focus(), 100);
+  } else {
+    if (input) input.value = '';
+    searchStations('');
+  }
+}
+
+// [Fix #9] 触摸反馈 - 振动
+if ('ontouchstart' in window) {
+  document.addEventListener('touchstart', function(e) {
+    const target = e.target.closest('.control-btn, .icon-btn, .nav-link, .extra-btn, .filter-chip, .tab-btn, .station-item, #player-cover, #play-btn');
+    if (target && navigator.vibrate) navigator.vibrate(15);
+  }, { passive: true });
 }
 
 function toggleFilterSection(header) {
