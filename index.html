@@ -4702,17 +4702,17 @@ function highlightStation(station) {
   });
   STATE.entities = STATE.entities.filter(e => !e._isHighlight && !e._isPulse);
   
-  const GREEN = Cesium.Color.fromCssColorString('#39FF14');
+  const GREEN = Cesium.Color.fromCssColorString('#00FF41');
   const isMobHL = window.innerWidth <= 900;
   
-  // 高亮圆点 — 大号亮绿色点 (移动端更大)
+  // 高亮圆点 — 纯亮绿 + 白色描边
   const dot = STATE.viewer.entities.add({
     position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 2000),
     point: {
-      pixelSize: isMobHL ? 24 : 18,
+      pixelSize: isMobHL ? 20 : 16,
       color: GREEN,
       outlineColor: Cesium.Color.WHITE,
-      outlineWidth: isMobHL ? 4 : 3,
+      outlineWidth: isMobHL ? 3 : 2,
       heightReference: Cesium.HeightReference.NONE,
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     },
@@ -4724,7 +4724,7 @@ function highlightStation(station) {
       outlineWidth: isMobHL ? 4 : 3,
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
       verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-      pixelOffset: new Cesium.Cartesian2(0, isMobHL ? -24 : -18),
+      pixelOffset: new Cesium.Cartesian2(0, isMobHL ? -20 : -16),
       heightReference: Cesium.HeightReference.NONE,
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     },
@@ -5254,31 +5254,24 @@ function changeBaseMap(mapType) {
         break;
         
       case 'ion-aerial':
-        // 使用天地图卫星影像（支持中文地名）— 如果天地图不可用则回退到 Cesium Ion
+        // 使用天地图卫星影像（支持中文地名）— 多服务器负载均衡，最高画质
         try {
           newLayer = layers.addImageryProvider(
-            new Cesium.WebMapTileServiceImageryProvider({
-              url: 'https://t0.tianditu.gov.cn/img_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
-              layer: 'img',
-              style: 'default',
-              format: 'image/jpeg',
-              tileMatrixSetID: 'GoogleMapsCompatible',
-              maximumLevel: 20,
+            new Cesium.UrlTemplateImageryProvider({
+              url: 'https://t{s}.tianditu.gov.cn/img_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
+              subdomains: ['0','1','2','3','4','5','6','7'],
               minimumLevel: 0,
+              maximumLevel: 18,
               tilingScheme: new Cesium.WebMercatorTilingScheme()
             })
           );
           // 添加天地图中文注记层
           newLabelLayer = layers.addImageryProvider(
-            new Cesium.WebMapTileServiceImageryProvider({
-              url: 'https://t0.tianditu.gov.cn/cia_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
-              layer: 'cia',
-              style: 'default',
-              format: 'image/png',
-              tileMatrixSetID: 'GoogleMapsCompatible',
-              maximumLevel: 20,
+            new Cesium.UrlTemplateImageryProvider({
+              url: 'https://t{s}.tianditu.gov.cn/cia_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
+              subdomains: ['0','1','2','3','4','5','6','7'],
               minimumLevel: 0,
-              translucent: true,
+              maximumLevel: 18,
               tilingScheme: new Cesium.WebMercatorTilingScheme()
             })
           );
@@ -5286,7 +5279,7 @@ function changeBaseMap(mapType) {
         } catch(e) {
           console.warn('天地图加载失败，回退到 Cesium Ion 卫星图');
           newLayer = layers.addImageryProvider(
-            new Cesium.IonImageryProvider({ assetId: 3, maximumLevel: 20 })
+            new Cesium.IonImageryProvider({ assetId: 3, maximumLevel: 22 })
           );
           showToast('🛰️ 天地图不可用，已切换到 Cesium 卫星图');
         }
@@ -5380,13 +5373,13 @@ function refreshVisibleMarkers() {
   });
   STATE.entities = STATE.entities.filter(e => e._isHighlight);
   
-  // 亮绿色单色标记 — 移动端加大 + 辉光描边
-  const GREEN = Cesium.Color.fromCssColorString('#39FF14');
-  const WHITE_A = Cesium.Color.fromCssColorString('rgba(255,255,255,0.35)');
+  // 高清亮绿色标记 — 单色纯绿 + 深色描边（防锯齿，高清边缘）
+  const GREEN = Cesium.Color.fromCssColorString('#00FF41'); // 纯亮绿
+  const DARK_OUTLINE = Cesium.Color.fromCssColorString('rgba(0,40,0,0.7)'); // 深绿描边
   const isMobile = window.innerWidth <= 900;
-  const dotSize = isMobile ? 14 : 7;
-  const dotOutlineW = isMobile ? 3 : 1;
-  const dotOutlineColor = isMobile ? Cesium.Color.fromCssColorString('rgba(57,255,20,0.5)') : WHITE_A;
+  const dotSize = isMobile ? 12 : 8;
+  const dotOutlineW = isMobile ? 2 : 1;
+  const dotOutlineColor = DARK_OUTLINE;
   
   const pointPrimitives = new Cesium.PointPrimitiveCollection();
   pointPrimitives.show = true;
@@ -5559,16 +5552,13 @@ function initCesium() {
       navigationHelpButton: false,
       navigationInstructionsInitiallyVisible: false,
       scene3DOnly: true,
-      // 暂时不使用复杂地形，加快加载
-      // terrainProvider: Cesium.createWorldTerrain({
-      //   requestWaterMask: true,
-      //   requestVertexNormals: true
-      // }),
-      // 优化渲染质量，同时保证加载速度
       sceneMode: Cesium.SceneMode.SCENE3D,
       mapProjection: new Cesium.WebMercatorProjection(),
       targetFrameRate: 60,
-      useDefaultRenderLoop: true
+      useDefaultRenderLoop: true,
+      // 高清渲染: 对数深度缓冲 + 抗锯齿
+      sceneLogarithmicDepthBuffer: true,
+      orderIndependentTranslucency: false
     });
     
     // 使用统一的底图加载函数
@@ -5601,21 +5591,28 @@ function initCesium() {
     STATE.viewer.scene.fog.enabled = true;
     STATE.viewer.scene.fog.minimumBrightness = 0.03;
     
-    // 优化远距离清晰度
-    STATE.viewer.scene.globe.maximumScreenSpaceError = 2; // 更小的值意味着更清晰
-    STATE.viewer.scene.globe.tileCacheSize = 1000; // 增大缓存，加快加载
+    // 优化远距离清晰度 — 最高分辨率
+    STATE.viewer.scene.globe.maximumScreenSpaceError = 0.5; // 极低值 = 加载最高精度瓦片
+    STATE.viewer.scene.globe.tileCacheSize = 2000; // 更大缓存
     STATE.viewer.scene.globe.fractionalZoom = true; // 启用分数缩放，平滑过渡
     STATE.viewer.scene.globe.baseColor = Cesium.Color.WHITE; // 设置基础颜色
+    
+    // 启用FXAA抗锯齿，消除锯齿边缘
+    STATE.viewer.scene.fxaa = true;
+    STATE.viewer.scene.postProcessStages.fxaa.enabled = true;
+    
+    // 确保全分辨率渲染（移动端也不降分辨率）
+    STATE.viewer.resolutionScale = window.devicePixelRatio || 1.0;
     
     // 启用深度测试，确保标记固定在地球表面而非飘在空中
     STATE.viewer.scene.globe.depthTestAgainstTerrain = true;
     
-    // [移动端增强] 提亮地球纹理可见度
+    // [移动端增强] 提亮地球纹理可见度（不降低分辨率）
     if (window.innerWidth <= 900) {
       STATE.viewer.scene.globe.enableLighting = false; // 关闭昼夜光照，让全地球都明亮
       STATE.viewer.scene.skyAtmosphere.brightnessShift = 0.15; // 更亮的大气
       STATE.viewer.scene.fog.minimumBrightness = 0.06;
-      STATE.viewer.scene.globe.maximumScreenSpaceError = 1.5; // 更清晰
+      // maximumScreenSpaceError 保持 0.5（全局最高精度）
     }
     
     // 缩放级别由底图 provider 的 maximumLevel 控制，不再直接访问内部API
