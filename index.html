@@ -2080,7 +2080,8 @@
     
     /* 左侧面板底部扩展 */
     #panel-left {
-      max-height: calc(100vh - 100px) !important;
+      top: 80px !important;
+      max-height: calc(100vh - 90px) !important;
     }
     
     /* 面板折叠按钮优化 */
@@ -2253,6 +2254,8 @@
       #panel-left { left: 0 !important; top: 0 !important; width: 85vw !important; max-width: 320px !important; border-radius: 0 20px 20px 0 !important; }
       #player-bar { min-width: 90% !important; max-width: 95% !important; bottom: calc(28px + env(safe-area-inset-bottom, 0px)) !important; padding: 10px 16px !important; }
       .info-indicators { display: none !important; }
+      /* 手机端隐藏面板内大洲导航（使用顶栏大洲导航） */
+      .panel-continent-nav { display: none !important; }
       /* [Fix #8] 下拉菜单改为底部弹出 (bottom-sheet) */
       .sleep-dropdown, .sleep-countdown {
         top: auto !important; bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
@@ -5425,7 +5428,7 @@ function refreshVisibleMarkers() {
   const GREEN = Cesium.Color.fromCssColorString('#00FF41');
   const isMobile = window.innerWidth <= 900;
   const dotSize = isMobile ? 5 : 4;
-  const dotAltitude = isMobile ? 10000 : 5000;
+  const dotAltitude = 10000;
   const dotOutlineW = 0;
   const dotOutlineColor = Cesium.Color.TRANSPARENT;
   
