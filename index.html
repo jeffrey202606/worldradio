@@ -4714,15 +4714,15 @@ function highlightStation(station) {
   const GREEN = Cesium.Color.fromCssColorString('#00FF41');
   const isMobHL = window.innerWidth <= 900;
   
-  // 高亮圆点 — 纯亮绿 + 白色描边，贴地显示
+  // 高亮圆点 — 纯亮绿 + 白色描边，略微抬高避免半圆裁剪
   const dot = STATE.viewer.entities.add({
-    position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 0),
+    position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 5000),
     point: {
       pixelSize: isMobHL ? 20 : 16,
       color: GREEN,
       outlineColor: Cesium.Color.WHITE,
       outlineWidth: isMobHL ? 3 : 2,
-      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      heightReference: Cesium.HeightReference.NONE,
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     },
     label: {
@@ -4734,7 +4734,7 @@ function highlightStation(station) {
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
       verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
       pixelOffset: new Cesium.Cartesian2(0, isMobHL ? -20 : -16),
-      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      heightReference: Cesium.HeightReference.NONE,
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     },
     _isHighlight: true
@@ -5111,31 +5111,31 @@ function addLocationLabels() {
   allLabels.forEach(location => {
     let labelFont, labelColor, labelSize, labelOutlineW;
     
-    // 根据类型设置不同的样式 (移动端放大 1.4x)
-    const scale = isMobileLabels ? 1.4 : 1;
+    // 根据类型设置不同的样式 (移动端进一步放大)
+    const scale = isMobileLabels ? 1.6 : 1;
     switch(location.type) {
       case 'country':
-        labelFont = `bold ${Math.round(18*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `bold ${Math.round(28*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#FFD700');
-        labelSize = Math.round(18*scale);
-        labelOutlineW = isMobileLabels ? 5 : 3;
+        labelSize = Math.round(28*scale);
+        labelOutlineW = isMobileLabels ? 6 : 4;
         break;
       case 'state':
-        labelFont = `bold ${Math.round(14*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `bold ${Math.round(22*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#98FB98');
-        labelSize = Math.round(14*scale);
-        labelOutlineW = isMobileLabels ? 4 : 3;
+        labelSize = Math.round(22*scale);
+        labelOutlineW = isMobileLabels ? 5 : 3;
         break;
       case 'city':
-        labelFont = `${Math.round(13*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `${Math.round(18*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
-        labelSize = Math.round(13*scale);
+        labelSize = Math.round(18*scale);
         labelOutlineW = isMobileLabels ? 4 : 3;
         break;
       default:
-        labelFont = `${Math.round(13*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `${Math.round(18*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
-        labelSize = Math.round(13*scale);
+        labelSize = Math.round(18*scale);
         labelOutlineW = isMobileLabels ? 4 : 3;
     }
     
@@ -5396,12 +5396,12 @@ function refreshVisibleMarkers() {
     if (!station.geo_lat || !station.geo_long) return;
     
     pointPrimitives.add({
-      position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 0),
+      position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 5000),
       pixelSize: dotSize,
       color: GREEN,
       outlineColor: dotOutlineColor,
       outlineWidth: dotOutlineW,
-      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      heightReference: Cesium.HeightReference.NONE,
       id: station
     });
   });
