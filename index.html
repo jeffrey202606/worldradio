@@ -3630,8 +3630,10 @@ function processStationData(station) {
   let geo_lat = station.geo_lat;
   let geo_long = station.geo_long;
   
-  // 过滤掉坐标为 (0,0) 或无效的电台 — 这些电台没有真实地理位置
-  if ((geo_lat === 0 && geo_long === 0) || geo_lat === null || geo_long === null) {
+  // 过滤掉无效坐标：(0,0)附近、越界、或非数字
+  if (!Number.isFinite(geo_lat) || !Number.isFinite(geo_long) ||
+      (Math.abs(geo_lat) < 1 && Math.abs(geo_long) < 1) ||
+      Math.abs(geo_lat) > 85 || Math.abs(geo_long) > 180) {
     geo_lat = null;
     geo_long = null;
   }
@@ -4712,15 +4714,15 @@ function highlightStation(station) {
   const GREEN = Cesium.Color.fromCssColorString('#00FF41');
   const isMobHL = window.innerWidth <= 900;
   
-  // 高亮圆点 — 纯亮绿 + 白色描边
+  // 高亮圆点 — 纯亮绿 + 白色描边，贴地显示
   const dot = STATE.viewer.entities.add({
-    position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 2000),
+    position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 0),
     point: {
       pixelSize: isMobHL ? 20 : 16,
       color: GREEN,
       outlineColor: Cesium.Color.WHITE,
       outlineWidth: isMobHL ? 3 : 2,
-      heightReference: Cesium.HeightReference.NONE,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     },
     label: {
@@ -4732,7 +4734,7 @@ function highlightStation(station) {
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
       verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
       pixelOffset: new Cesium.Cartesian2(0, isMobHL ? -20 : -16),
-      heightReference: Cesium.HeightReference.NONE,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     },
     _isHighlight: true
@@ -5394,12 +5396,12 @@ function refreshVisibleMarkers() {
     if (!station.geo_lat || !station.geo_long) return;
     
     pointPrimitives.add({
-      position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 5000),
+      position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 0),
       pixelSize: dotSize,
       color: GREEN,
       outlineColor: dotOutlineColor,
       outlineWidth: dotOutlineW,
-      heightReference: Cesium.HeightReference.NONE,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
       id: station
     });
@@ -5611,8 +5613,8 @@ function initCesium() {
     // 确保全分辨率渲染（移动端也不降分辨率）
     STATE.viewer.resolutionScale = window.devicePixelRatio || 1.0;
     
-    // 启用深度测试，但标记点不受影响（通过 disableDepthTestDistance）
-    STATE.viewer.scene.globe.depthTestAgainstTerrain = false;
+    // 启用深度测试，标记点通过 disableDepthTestDistance 始终可见
+    STATE.viewer.scene.globe.depthTestAgainstTerrain = true;
     
     // [移动端增强] 提亮地球纹理可见度（不降低分辨率）
     if (window.innerWidth <= 900) {
