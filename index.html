@@ -2050,12 +2050,13 @@
     }
     #cesiumContainer { border-radius: 0 !important; }
     
-    /* 顶栏: 悬浮毛玻璃条 */
+    /* 顶栏: 悬浮毛玻璃条 — 与左面板同宽 */
     #topbar {
       position: fixed !important;
       top: 16px !important;
       left: 24px !important;
-      right: 24px !important;
+      width: 320px !important;
+      right: auto !important;
       height: 52px !important;
       margin: 0 !important;
       z-index: 1100 !important;
@@ -2067,6 +2068,8 @@
       padding: 0 20px !important;
       gap: 16px !important;
     }
+    /* 顶栏右侧小功能按钮隐藏 */
+    #topbar > div[style*="margin-left:auto"] { display: none !important; }
     #topbar::before {
       background: linear-gradient(90deg, transparent, rgba(0,212,255,0.2) 30%, rgba(123,104,238,0.2) 70%, transparent) !important;
       opacity: 0.5 !important;
@@ -2267,7 +2270,8 @@
     /* 移动端适配 */
     @media (max-width: 900px) {
       /* [Fix #3] Safe Area + 2行布局 */
-      #topbar { left: 12px !important; right: 12px !important; top: calc(12px + env(safe-area-inset-top, 0px)) !important; height: auto !important; }
+      #topbar { left: 12px !important; right: 12px !important; width: auto !important; top: calc(12px + env(safe-area-inset-top, 0px)) !important; height: auto !important; }
+      #topbar > div[style*="margin-left:auto"] { display: flex !important; }
       #panel-left { left: 0 !important; top: 0 !important; width: 85vw !important; max-width: 320px !important; border-radius: 0 20px 20px 0 !important; }
       #player-bar { min-width: 90% !important; max-width: 95% !important; bottom: calc(28px + env(safe-area-inset-bottom, 0px)) !important; padding: 10px 16px !important; }
       .info-indicators { display: none !important; }
