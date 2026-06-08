@@ -3058,9 +3058,9 @@ const STATE = {
     'NZ': { lat: -40.9006, lon: 174.8860 },
     'TH': { lat: 15.8700, lon: 100.9925 },
     'VN': { lat: 14.0583, lon: 108.2772 },
-    'ID': { lat: -0.7893, lon: 113.9213 },
-    'MY': { lat: 4.2105, lon: 101.9758 },
-    'PH': { lat: 12.8797, lon: 121.7740 },
+    'ID': { lat: -6.2088, lon: 106.8456 },
+    'MY': { lat: 3.1390, lon: 101.6869 },
+    'PH': { lat: 14.5995, lon: 120.9842 },
     'SG': { lat: 1.3521, lon: 103.8198 },
     'HK': { lat: 22.3193, lon: 114.1694 },
     'TW': { lat: 23.6978, lon: 120.9605 },
@@ -5402,7 +5402,6 @@ function refreshVisibleMarkers() {
       outlineColor: dotOutlineColor,
       outlineWidth: dotOutlineW,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      disableDepthTestDistance: Number.POSITIVE_INFINITY,
       id: station
     });
   });
@@ -5613,7 +5612,7 @@ function initCesium() {
     // 确保全分辨率渲染（移动端也不降分辨率）
     STATE.viewer.resolutionScale = window.devicePixelRatio || 1.0;
     
-    // 启用深度测试，标记点通过 disableDepthTestDistance 始终可见
+    // 启用深度测试，标记点贴地渲染，背面标记被地球遮挡
     STATE.viewer.scene.globe.depthTestAgainstTerrain = true;
     
     // [移动端增强] 提亮地球纹理可见度（不降低分辨率）
