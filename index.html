@@ -1879,6 +1879,7 @@
       /* 隐藏右侧按钮容器，让 logo 真正居中 */
       #topbar > div[style*="margin-left:auto"] { display: none !important; }
       .continent-nav {
+        display: flex !important;
         order: 3; width: 100%; flex-wrap: wrap; margin-left: 0 !important;
         justify-content: center; gap: 2px !important;
         padding: 4px 0 2px;
@@ -1887,6 +1888,8 @@
       }
       .nav-link { white-space: nowrap; flex-shrink: 0; padding: 7px 10px; font-size: 11px; border-radius: 10px; }
       .nav-link.active { background: rgba(0,212,255,0.12) !important; }
+      /* 手机端隐藏面板内大洲导航（使用顶栏的大洲导航） */
+      .panel-continent-nav { display: none !important; }
       /* 触控目标 */
       .icon-btn { min-width: 40px; min-height: 40px; }
       /* 隐藏非核心图标 + 菜单按钮 */
@@ -2069,6 +2072,15 @@
     @keyframes hudFadeIn {
       from { opacity: 0; transform: translateY(12px) scale(0.98); }
       to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    
+    /* PC端：隐藏顶栏大洲导航，显示面板内大洲导航 */
+    #topbar .continent-nav { display: none !important; }
+    .panel-continent-nav { display: block !important; }
+    
+    /* 左侧面板底部扩展 */
+    #panel-left {
+      max-height: calc(100vh - 100px) !important;
     }
     
     /* 面板折叠按钮优化 */
@@ -2565,6 +2577,17 @@
           <div class="search-wrapper">
             <span class="search-icon">&#x1F50D;</span>
             <input type="text" class="search-input" id="search-input" placeholder="搜索电台、语言、国家..." oninput="searchStations(this.value)">
+          </div>
+        </div>
+        <div class="filter-section panel-continent-nav">
+          <div class="filter-label">大洲</div>
+          <div class="filter-chips" id="continent-chips">
+            <div class="filter-chip active" onclick="flyToContinent('global',this)">全球 <span class="chip-count" id="pnc-global">—</span></div>
+            <div class="filter-chip" onclick="flyToContinent('asia',this)">亚洲 <span class="chip-count" id="pnc-asia">—</span></div>
+            <div class="filter-chip" onclick="flyToContinent('europe',this)">欧洲 <span class="chip-count" id="pnc-europe">—</span></div>
+            <div class="filter-chip" onclick="flyToContinent('america',this)">美洲 <span class="chip-count" id="pnc-america">—</span></div>
+            <div class="filter-chip" onclick="flyToContinent('africa',this)">非洲 <span class="chip-count" id="pnc-africa">—</span></div>
+            <div class="filter-chip" onclick="flyToContinent('oceania',this)">大洋洲 <span class="chip-count" id="pnc-oceania">—</span></div>
           </div>
         </div>
         <div class="filter-section">
@@ -3927,16 +3950,22 @@ function updateChipCounts() {
     if (el) el.textContent = c > 999 ? Math.round(c/1000)+'k' : c;
   });
 
-  // 大洲导航计数
+  // 大洲导航计数（同步更新顶栏和面板两处）
   const allStations = [...STATE.stations];
   const total = allStations.length;
+  const totalStr = total > 999 ? Math.round(total/1000)+'k' : total;
   const ncGlobal = document.getElementById('nc-global');
-  if (ncGlobal) ncGlobal.textContent = total > 999 ? Math.round(total/1000)+'k' : total;
-  const continentKeys = {asia:'nc-asia',europe:'nc-europe',america:'nc-america',africa:'nc-africa',oceania:'nc-oceania'};
+  const pncGlobal = document.getElementById('pnc-global');
+  if (ncGlobal) ncGlobal.textContent = totalStr;
+  if (pncGlobal) pncGlobal.textContent = totalStr;
+  const continentKeys = {asia:'asia',europe:'europe',america:'america',africa:'africa',oceania:'oceania'};
   Object.keys(continentKeys).forEach(cont => {
     const c = allStations.filter(s => s.countrycode && STATE.continentMap[s.countrycode.toUpperCase()] === cont).length;
-    const el = document.getElementById(continentKeys[cont]);
-    if (el) el.textContent = c > 999 ? Math.round(c/1000)+'k' : c;
+    const val = c > 999 ? Math.round(c/1000)+'k' : c;
+    const el1 = document.getElementById('nc-' + cont);
+    const el2 = document.getElementById('pnc-' + cont);
+    if (el1) el1.textContent = val;
+    if (el2) el2.textContent = val;
   });
 }
 
@@ -4893,9 +4922,19 @@ function flyToCity(cityName, lat, lon) {
 function flyToContinent(continent, btnEl) {
   if (!STATE.viewer) return;
   
-  // 切换导航高亮
-  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  // 同步两处导航高亮（顶栏 + 面板）
+  document.querySelectorAll('.continent-nav .nav-link').forEach(l => l.classList.remove('active'));
+  document.querySelectorAll('#continent-chips .filter-chip').forEach(l => l.classList.remove('active'));
   if (btnEl) btnEl.classList.add('active');
+  // 同步另一处导航的 active 状态
+  const continentIndex = ['global','asia','europe','america','africa','oceania'];
+  const idx = continentIndex.indexOf(continent);
+  if (idx >= 0) {
+    const topBtns = document.querySelectorAll('.continent-nav .nav-link');
+    const panelBtns = document.querySelectorAll('#continent-chips .filter-chip');
+    if (topBtns[idx]) topBtns[idx].classList.add('active');
+    if (panelBtns[idx]) panelBtns[idx].classList.add('active');
+  }
   
   const isMob = window.innerWidth <= 900;
   const viewpoints = {
@@ -5115,28 +5154,28 @@ function addLocationLabels() {
     const scale = isMobileLabels ? 1.6 : 1;
     switch(location.type) {
       case 'country':
-        labelFont = `bold ${Math.round(28*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `bold ${Math.round(40*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#FFD700');
-        labelSize = Math.round(28*scale);
-        labelOutlineW = isMobileLabels ? 6 : 4;
+        labelSize = Math.round(40*scale);
+        labelOutlineW = isMobileLabels ? 7 : 5;
         break;
       case 'state':
-        labelFont = `bold ${Math.round(22*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `bold ${Math.round(30*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#98FB98');
-        labelSize = Math.round(22*scale);
-        labelOutlineW = isMobileLabels ? 5 : 3;
+        labelSize = Math.round(30*scale);
+        labelOutlineW = isMobileLabels ? 6 : 4;
         break;
       case 'city':
-        labelFont = `${Math.round(18*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `${Math.round(24*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
-        labelSize = Math.round(18*scale);
-        labelOutlineW = isMobileLabels ? 4 : 3;
+        labelSize = Math.round(24*scale);
+        labelOutlineW = isMobileLabels ? 5 : 4;
         break;
       default:
-        labelFont = `${Math.round(18*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `${Math.round(24*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
-        labelSize = Math.round(18*scale);
-        labelOutlineW = isMobileLabels ? 4 : 3;
+        labelSize = Math.round(24*scale);
+        labelOutlineW = isMobileLabels ? 5 : 4;
     }
     
     const entity = STATE.viewer.entities.add({
@@ -5385,7 +5424,8 @@ function refreshVisibleMarkers() {
   // 高清亮绿色标记 — 纯色无外线
   const GREEN = Cesium.Color.fromCssColorString('#00FF41');
   const isMobile = window.innerWidth <= 900;
-  const dotSize = isMobile ? 10 : 7;
+  const dotSize = isMobile ? 5 : 4;
+  const dotAltitude = isMobile ? 10000 : 5000;
   const dotOutlineW = 0;
   const dotOutlineColor = Cesium.Color.TRANSPARENT;
   
@@ -5396,7 +5436,7 @@ function refreshVisibleMarkers() {
     if (!station.geo_lat || !station.geo_long) return;
     
     pointPrimitives.add({
-      position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 5000),
+      position: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, dotAltitude),
       pixelSize: dotSize,
       color: GREEN,
       outlineColor: dotOutlineColor,
