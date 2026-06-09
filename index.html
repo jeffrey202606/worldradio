@@ -1778,52 +1778,6 @@
     .scale-bar::before { left: 0; }
     .scale-bar::after { right: 0; }
     
-    /* 地球地名HTML覆盖层 — 确保文字始终可见 */
-    #globe-labels-overlay {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 100;
-      overflow: hidden;
-    }
-    .globe-label {
-      position: absolute;
-      white-space: nowrap;
-      transform: translate(-50%, -50%);
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-      text-shadow:
-        0 0 8px rgba(0,0,0,1),
-        0 0 16px rgba(0,0,0,0.9),
-        0 0 24px rgba(0,0,0,0.7),
-        2px 2px 4px rgba(0,0,0,1),
-        -2px -2px 4px rgba(0,0,0,1);
-    }
-    .globe-label.country {
-      font-size: 26px;
-      font-weight: 900;
-      color: #FFD700;
-      letter-spacing: 3px;
-      text-shadow:
-        0 0 10px rgba(0,0,0,1),
-        0 0 20px rgba(0,0,0,0.9),
-        0 0 30px rgba(255,215,0,0.3),
-        3px 3px 6px rgba(0,0,0,1),
-        -3px -3px 6px rgba(0,0,0,1);
-    }
-    .globe-label.state {
-      font-size: 18px;
-      font-weight: 700;
-      color: #98FB98;
-      letter-spacing: 1.5px;
-    }
-    .globe-label.city {
-      font-size: 14px;
-      font-weight: 600;
-      color: #E0F0FF;
-      letter-spacing: 0.5px;
-    }
-
 /* 电台信息提示框 - Premium */
     .station-tooltip {
       position: absolute;
@@ -2803,7 +2757,6 @@
       <div class="error-text" id="loading-error"></div>
     </div>
     <div id="cesiumContainer"></div>
-    <div id="globe-labels-overlay"></div>
     
 
 
@@ -3176,8 +3129,6 @@ const STATE = {
     ]
   },
   showLocationLabels: true,
-  globeLabels: [],
-  _labelRenderHandler: null,
   currentBaseMap: 'ion-aerial', // 天地图卫星影像 + cia_w中文注记层
   isLoading: true,
   // 国家坐标映射（用于地理编码）
@@ -5212,127 +5163,76 @@ function deleteBookmark(id) {
   showToast('❌ 书签已删除');
 }
 
-function addLocationLabels() {
-  if (!STATE.viewer) return;
-  
-  const overlay = document.getElementById('globe-labels-overlay');
-  if (!overlay) return;
-  overlay.innerHTML = '';
-  STATE.globeLabels = [];
-  
-  const allLabels = [
-    ...STATE.locationLabels.countries,
-    ...STATE.locationLabels.cities,
-    ...STATE.locationLabels.states
-  ];
-  
-  allLabels.forEach(location => {
-    const el = document.createElement('div');
-    el.className = 'globe-label ' + location.type;
-    el.textContent = location.name;
-    el.style.display = 'none';
-    overlay.appendChild(el);
-    STATE.globeLabels.push({
-      el: el,
-      position: Cesium.Cartesian3.fromDegrees(location.lon, location.lat, 0),
-      type: location.type
-    });
-  });
-  
-  if (STATE._labelRenderHandler) {
-    STATE._labelRenderHandler();
+/**
+ * ZoomOffsetImageryProvider — 缩放偏移瓦片加载器
+ * 将瓦片源提升 N 级加载，裁切子区域拼接为当前级别瓦片
+ * 效果：注记层文字放大 2^offset 倍，样式完全保持原图
+ */
+class ZoomOffsetImageryProvider {
+  constructor(options) {
+    this._tilingScheme = new Cesium.WebMercatorTilingScheme();
+    this._rectangle = Cesium.Rectangle.MAX_VALUE;
+    this._tileWidth = 256;
+    this._tileHeight = 256;
+    this._minimumLevel = options.minimumLevel || 1;
+    this._maximumLevel = (options.maximumLevel || 18) - (options.offset || 1);
+    this._offset = options.offset || 1;
+    this._tileSize = 256;
+    this._subdomains = options.subdomains || ['0','1','2','3','4','5','6','7'];
+    this._urlTemplate = options.urlTemplate;
+    this._ready = true;
   }
-  
-  STATE._labelRenderHandler = STATE.viewer.scene.postRender.addEventListener(() => {
-    if (!STATE.showLocationLabels) {
-      overlay.style.display = 'none';
-      return;
-    }
-    overlay.style.display = '';
-    const scene = STATE.viewer.scene;
-    const camera = scene.camera;
-    const canvas = scene.canvas;
-    const cw = canvas.clientWidth;
-    const ch = canvas.clientHeight;
-    
-    // 相机高度（距地表距离）
-    const camHeight = Cesium.Cartesian3.magnitude(camera.position) - Cesium.Ellipsoid.WGS84.maximumRadius;
-    
-    STATE.globeLabels.forEach(lbl => {
-      // 将3D坐标投影到屏幕
-      const sp = Cesium.SceneTransforms.wgs84ToWindowCoordinates(scene, lbl.position);
-      if (!sp) { lbl.el.style.display = 'none'; return; }
-      
-      const sx = sp.x;
-      const sy = sp.y;
-      
-      // 屏幕范围检查
-      if (sx < -80 || sx > cw + 80 || sy < -40 || sy > ch + 40) {
-        lbl.el.style.display = 'none';
-        return;
-      }
-      
-      // 背面剔除
-      const camDir = Cesium.Cartesian3.normalize(camera.position, new Cesium.Cartesian3());
-      const labelDir = Cesium.Cartesian3.normalize(Cesium.Cartesian3.clone(lbl.position), new Cesium.Cartesian3());
-      const dot = Cesium.Cartesian3.dot(camDir, labelDir);
-      if (dot < -0.05) {
-        lbl.el.style.display = 'none';
-        return;
-      }
-      
-      // 根据相机距离和标签类型计算可见性和字体大小
-      let opacity = 0;
-      let fontScale = 1;
-      
-      if (lbl.type === 'country') {
-        // 国家名：在远处就要显示，默认视角(15M)下清晰可见
-        if (camHeight > 60000000) { opacity = 0; }
-        else if (camHeight > 45000000) { opacity = (60000000 - camHeight) / 15000000; }
-        else if (camHeight > 3000000) { opacity = 1; fontScale = 1; }
-        else if (camHeight > 1500000) { opacity = 1; fontScale = 1.15; }
-        else { opacity = 0.8; fontScale = 1.3; }
-      } else if (lbl.type === 'state') {
-        // 省州名：中等距离显示
-        if (camHeight > 25000000) { opacity = 0; }
-        else if (camHeight > 18000000) { opacity = (25000000 - camHeight) / 7000000; }
-        else if (camHeight > 2000000) { opacity = 1; }
-        else if (camHeight > 800000) { opacity = 1; fontScale = 1.2; }
-        else { opacity = 0.7; fontScale = 1.4; }
-      } else {
-        // 城市名：近距离显示
-        if (camHeight > 15000000) { opacity = 0; }
-        else if (camHeight > 10000000) { opacity = (15000000 - camHeight) / 5000000; }
-        else if (camHeight > 500000) { opacity = 1; }
-        else if (camHeight > 200000) { opacity = 1; fontScale = 1.2; }
-        else { opacity = 0.6; fontScale = 1.4; }
-      }
-      
-      if (opacity <= 0) {
-        lbl.el.style.display = 'none';
-        return;
-      }
-      
-      lbl.el.style.display = '';
-      lbl.el.style.left = sx + 'px';
-      lbl.el.style.top = sy + 'px';
-      lbl.el.style.opacity = Math.max(0, Math.min(1, opacity));
-      
-      if (fontScale !== 1) {
-        lbl.el.style.transform = `translate(-50%, -50%) scale(${fontScale})`;
-      } else {
-        lbl.el.style.transform = 'translate(-50%, -50%)';
-      }
+  get ready() { return this._ready; }
+  get rectangle() { return this._rectangle; }
+  get tileWidth() { return this._tileWidth; }
+  get tileHeight() { return this._tileHeight; }
+  get minimumLevel() { return this._minimumLevel; }
+  get maximumLevel() { return this._maximumLevel; }
+  get tilingScheme() { return this._tilingScheme; }
+  get hasAlphaChannel() { return true; }
+  getTileWidth() { return this._tileWidth; }
+  getTileHeight() { return this._tileHeight; }
+  getMaximumLevel() { return this._maximumLevel; }
+  getMinimumLevel() { return this._minimumLevel; }
+
+  requestImage(x, y, level, request) {
+    const actualLevel = Math.min(level + this._offset, 18);
+    const levelDiff = actualLevel - level;
+    const scale = Math.pow(2, levelDiff);
+    const actualX = x * scale;
+    const actualY = y * scale;
+    const s = this._subdomains[(x + y) % this._subdomains.length];
+    const url = this._urlTemplate
+      .replace('{s}', s).replace('{z}', String(actualLevel))
+      .replace('{y}', String(actualY)).replace('{x}', String(actualX));
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        if (scale === 1) { resolve(img); return; }
+        const subSize = this._tileSize / scale;
+        const canvas = document.createElement('canvas');
+        canvas.width = this._tileSize;
+        canvas.height = this._tileSize;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, subSize, subSize, 0, 0, this._tileSize, this._tileSize);
+        canvas.toBlob(blob => resolve(blob), 'image/png');
+      };
+      img.onerror = () => {
+        const c = document.createElement('canvas');
+        c.width = this._tileSize; c.height = this._tileSize;
+        c.toBlob(blob => resolve(blob), 'image/png');
+      };
+      img.src = url;
     });
-  });
-  
-  console.log('🏷 位置标签加载完成（大字体HTML覆盖层）');
+  }
 }
 
 function toggleLocationLabels() {
   STATE.showLocationLabels = !STATE.showLocationLabels;
-  const overlay = document.getElementById('globe-labels-overlay');
-  if (overlay) overlay.style.display = STATE.showLocationLabels ? '' : 'none';
   showToast(STATE.showLocationLabels ? '🏷 显示位置标签' : '🏷 隐藏位置标签');
 }
 
@@ -5392,14 +5292,14 @@ function changeBaseMap(mapType) {
               tilingScheme: new Cesium.WebMercatorTilingScheme()
             })
           );
-          // 叠加天地图中文注记层(cia_w)，显示原生地名
+          // 叠加天地图中文注记层(cia_w)，使用ZoomOffset偏移+1级使文字放大2倍
           newLabelLayer = layers.addImageryProvider(
-            new Cesium.UrlTemplateImageryProvider({
-              url: 'https://t{s}.tianditu.gov.cn/cia_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
+            new ZoomOffsetImageryProvider({
+              urlTemplate: 'https://t{s}.tianditu.gov.cn/cia_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
               subdomains: ['0','1','2','3','4','5','6','7'],
-              minimumLevel: 0,
-              maximumLevel: 18,
-              tilingScheme: new Cesium.WebMercatorTilingScheme()
+              offset: 1,
+              minimumLevel: 1,
+              maximumLevel: 18
             })
           );
           showToast('🛰️ 已切换到天地图卫星影像（含中文注记）');
@@ -5752,8 +5652,7 @@ function initCesium() {
         STATE.isLoading = false;
         document.getElementById('loading-overlay').style.display = 'none';
         
-        // 加载大字体地名标签
-        addLocationLabels();
+        // 初始化完成
         
         console.log('✅ 初始化完成');
       }
