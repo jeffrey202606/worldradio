@@ -3300,7 +3300,7 @@ const STATE = {
     ]
   },
   showLocationLabels: true,
-  currentBaseMap: 'ion-aerial', // Cesium Ion高清卫星影像 + cia_w中文注记层
+  currentBaseMap: 'ion-aerial', // 天地图img_w卫星影像 + cia_w中文注记层（缩放偏移放大）
   isLoading: true,
   // 国家坐标映射（用于地理编码）
   countryCoordinates: {
@@ -5384,15 +5384,17 @@ function changeBaseMap(mapType) {
         break;
         
       case 'ion-aerial':
-        // Cesium Ion 超高清卫星影像底图 + 天地图cia_w中文注记层
+        // 天地图高清卫星影像底图 + cia_w中文注记层（缩放偏移放大文字）
         try {
-          // 底图：Cesium Ion Sentinel-2 高清卫星影像
+          // 底图：天地图卫星影像
           newLayer = layers.addImageryProvider(
-            new Cesium.IonImageryProvider({ assetId: 3954, maximumLevel: 14 })
-          );
-          // 同时叠加 Bing Maps Aerial 作为补充（更高分辨率）
-          const bingLayer = layers.addImageryProvider(
-            new Cesium.IonImageryProvider({ assetId: 2, maximumLevel: 22 })
+            new Cesium.UrlTemplateImageryProvider({
+              url: 'https://t{s}.tianditu.gov.cn/img_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
+              subdomains: ['0','1','2','3','4','5','6','7'],
+              minimumLevel: 0,
+              maximumLevel: 18,
+              tilingScheme: new Cesium.WebMercatorTilingScheme()
+            })
           );
           // 叠加天地图中文注记层(cia_w)，通过拦截requestImage实现文字放大2倍
           const ciaProvider = new Cesium.UrlTemplateImageryProvider({
@@ -5438,7 +5440,7 @@ function changeBaseMap(mapType) {
             };
           })();
           newLabelLayer = layers.addImageryProvider(ciaProvider);
-          showToast('🛰️ 已切换到 Cesium 超高清卫星影像 + 天地图中文注记');
+          showToast('🛰️ 已切换到天地图卫星影像 + 中文注记');
         } catch(e) {
           console.warn('天地图加载失败，回退到 Cesium Ion 卫星图');
           newLayer = layers.addImageryProvider(
