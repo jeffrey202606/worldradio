@@ -5239,7 +5239,7 @@ function changeBaseMap(mapType) {
             ciaProvider.requestImage = function(x, y, level, request) {
               const newLevel = Math.min(level + 1, 18);
               // 用原始方法加载高一级瓦片
-              return origRequest(x, y, newLevel, request).then(function(img) {
+              return Promise.resolve(origRequest(x, y, newLevel, request)).then(function(img) {
                 if (!img) return undefined;
                 // 计算当前瓦片在高一级中的子区域位置
                 const rect = ts.tileXYToRectangle(x, y, level);
