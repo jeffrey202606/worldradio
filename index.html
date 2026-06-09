@@ -3058,8 +3058,8 @@ const STATE = {
     ]
   },
   labelEntities: [],
-  showLocationLabels: false, // 使用底图自带地名，不显示自定义标签
-  currentBaseMap: 'ion-aerial', // 天地图卫星影像（中文地名）
+  showLocationLabels: true, // 启用自定义大字体标签，替代底图小字标签
+  currentBaseMap: 'ion-aerial', // 天地图卫星影像（自定义标签提供地名）
   labelVisibility: {
     country: true,
     state: true,
@@ -5186,30 +5186,30 @@ function addLocationLabels() {
     let labelFont, labelColor, labelSize, labelOutlineW;
     
     // 根据类型设置不同的样式 (移动端进一步放大以保证可读性)
-    const scale = isMobileLabels ? 2.2 : 1;
+    const scale = isMobileLabels ? 2.0 : 1;
     switch(location.type) {
       case 'country':
-        labelFont = `bold ${Math.round(40*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `bold ${Math.round(52*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#FFD700');
-        labelSize = Math.round(40*scale);
+        labelSize = Math.round(52*scale);
         labelOutlineW = isMobileLabels ? 8 : 5;
         break;
       case 'state':
-        labelFont = `bold ${Math.round(30*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `bold ${Math.round(40*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#98FB98');
-        labelSize = Math.round(30*scale);
+        labelSize = Math.round(40*scale);
         labelOutlineW = isMobileLabels ? 7 : 4;
         break;
       case 'city':
-        labelFont = `${Math.round(24*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `${Math.round(32*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
-        labelSize = Math.round(24*scale);
+        labelSize = Math.round(32*scale);
         labelOutlineW = isMobileLabels ? 6 : 4;
         break;
       default:
-        labelFont = `${Math.round(24*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
+        labelFont = `${Math.round(32*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
         labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
-        labelSize = Math.round(24*scale);
+        labelSize = Math.round(32*scale);
         labelOutlineW = isMobileLabels ? 6 : 4;
     }
     
@@ -5232,10 +5232,10 @@ function addLocationLabels() {
         scaleByDistance: false,
         translucencyByDistance: false,
         distanceDisplayCondition: location.type === 'country' 
-          ? new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 50000000 : 30000000)
+          ? new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 60000000 : 45000000)
           : location.type === 'state'
-            ? new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 35000000 : 18000000)
-            : new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 20000000 : 10000000)
+            ? new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 45000000 : 30000000)
+            : new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 30000000 : 18000000)
       },
       locationType: location.type,
       _isLocationLabel: true
@@ -5339,7 +5339,9 @@ function changeBaseMap(mapType) {
         break;
         
       case 'ion-aerial':
-        // 使用天地图卫星影像（支持中文地名）— 多服务器负载均衡，最高画质
+        // 使用天地图卫星影像 — 多服务器负载均衡，最高画质
+        // 注：不再叠加天地图中文注记层(cia_w)，因其字体在3D地球上过小几乎不可见
+        // 改由自定义大字体位置标签提供地名显示
         try {
           newLayer = layers.addImageryProvider(
             new Cesium.UrlTemplateImageryProvider({
@@ -5350,17 +5352,7 @@ function changeBaseMap(mapType) {
               tilingScheme: new Cesium.WebMercatorTilingScheme()
             })
           );
-          // 添加天地图中文注记层
-          newLabelLayer = layers.addImageryProvider(
-            new Cesium.UrlTemplateImageryProvider({
-              url: 'https://t{s}.tianditu.gov.cn/cia_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
-              subdomains: ['0','1','2','3','4','5','6','7'],
-              minimumLevel: 0,
-              maximumLevel: 18,
-              tilingScheme: new Cesium.WebMercatorTilingScheme()
-            })
-          );
-          showToast('🛰️ 已切换到天地图卫星影像（中文地名）');
+          showToast('🛰️ 已切换到天地图卫星影像');
         } catch(e) {
           console.warn('天地图加载失败，回退到 Cesium Ion 卫星图');
           newLayer = layers.addImageryProvider(
