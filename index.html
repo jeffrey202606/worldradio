@@ -5174,21 +5174,29 @@ class ZoomOffsetImageryProvider {
     this._rectangle = Cesium.Rectangle.MAX_VALUE;
     this._tileWidth = 256;
     this._tileHeight = 256;
-    this._minimumLevel = options.minimumLevel || 1;
+    this._minimumLevel = options.minimumLevel !== undefined ? options.minimumLevel : 1;
     this._maximumLevel = (options.maximumLevel || 18) - (options.offset || 1);
     this._offset = options.offset || 1;
     this._tileSize = 256;
     this._subdomains = options.subdomains || ['0','1','2','3','4','5','6','7'];
     this._urlTemplate = options.urlTemplate;
     this._ready = true;
+    // CesiumJS 必需属性
+    this._errorEvent = new Cesium.Event();
+    this._credit = new Cesium.Credit('');
+    this._readyPromise = Promise.resolve(true);
+    this.proxy = undefined;
   }
   get ready() { return this._ready; }
+  get readyPromise() { return this._readyPromise; }
   get rectangle() { return this._rectangle; }
   get tileWidth() { return this._tileWidth; }
   get tileHeight() { return this._tileHeight; }
   get minimumLevel() { return this._minimumLevel; }
   get maximumLevel() { return this._maximumLevel; }
   get tilingScheme() { return this._tilingScheme; }
+  get errorEvent() { return this._errorEvent; }
+  get credit() { return this._credit; }
   get hasAlphaChannel() { return true; }
   getTileWidth() { return this._tileWidth; }
   getTileHeight() { return this._tileHeight; }
@@ -5206,26 +5214,26 @@ class ZoomOffsetImageryProvider {
       .replace('{s}', s).replace('{z}', String(actualLevel))
       .replace('{y}', String(actualY)).replace('{x}', String(actualX));
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
-        if (scale === 1) { resolve(img); return; }
-        const subSize = this._tileSize / scale;
-        const canvas = document.createElement('canvas');
-        canvas.width = this._tileSize;
-        canvas.height = this._tileSize;
-        const ctx = canvas.getContext('2d');
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, subSize, subSize, 0, 0, this._tileSize, this._tileSize);
-        canvas.toBlob(blob => resolve(blob), 'image/png');
+        try {
+          if (scale === 1) { resolve(img); return; }
+          const canvas = document.createElement('canvas');
+          canvas.width = this._tileSize;
+          canvas.height = this._tileSize;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          const subSize = this._tileSize / scale;
+          ctx.drawImage(img, 0, 0, subSize, subSize, 0, 0, this._tileSize, this._tileSize);
+          resolve(canvas);
+        } catch(e) {
+          resolve(undefined);
+        }
       };
-      img.onerror = () => {
-        const c = document.createElement('canvas');
-        c.width = this._tileSize; c.height = this._tileSize;
-        c.toBlob(blob => resolve(blob), 'image/png');
-      };
+      img.onerror = () => { resolve(undefined); };
       img.src = url;
     });
   }
