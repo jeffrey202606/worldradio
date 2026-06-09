@@ -1779,39 +1779,7 @@
     .scale-bar::after { right: 0; }
     
     /* 地球地名HTML覆盖层 — 确保文字始终可见 */
-    #globe-labels-overlay {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 100;
-      overflow: hidden;
-    }
-    .globe-label {
-      position: absolute;
-      white-space: nowrap;
-      text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 12px rgba(0,0,0,0.8), 0 1px 3px rgba(0,0,0,1);
-      transform: translate(-50%, -50%);
-      transition: opacity 0.2s ease;
-      pointer-events: none;
-    }
-    .globe-label.country {
-      font-size: 16px;
-      font-weight: 800;
-      color: #FFD700;
-      letter-spacing: 1px;
-    }
-    .globe-label.state {
-      font-size: 13px;
-      font-weight: 700;
-      color: #98FB98;
-    }
-    .globe-label.city {
-      font-size: 11px;
-      font-weight: 500;
-      color: #F0F8FF;
-    }
 
-    
     /* 电台信息提示框 - Premium */
     .station-tooltip {
       position: absolute;
@@ -2791,7 +2759,6 @@
       <div class="error-text" id="loading-error"></div>
     </div>
     <div id="cesiumContainer"></div>
-    <div id="globe-labels-overlay"></div>
     
 
 
@@ -3163,15 +3130,8 @@ const STATE = {
       { name: '马哈拉施特拉', lat: 19.7515, lon: 75.7139, type: 'state', country: '印度' }
     ]
   },
-  labelEntities: [],
-  globeLabels: [],
-  showLocationLabels: true, // 启用自定义大字体标签，替代底图小字标签
-  currentBaseMap: 'ion-aerial', // 天地图卫星影像（自定义标签提供地名）
-  labelVisibility: {
-    country: true,
-    state: true,
-    city: true
-  },
+  showLocationLabels: true,
+  currentBaseMap: 'ion-aerial', // 天地图卫星影像 + cia_w中文注记层
   isLoading: true,
   // 国家坐标映射（用于地理编码）
   countryCoordinates: {
@@ -5205,110 +5165,13 @@ function deleteBookmark(id) {
   showToast('❌ 书签已删除');
 }
 
-function addLocationLabels() {
-  if (!STATE.viewer) return;
-  
-  // 清除旧的HTML标签
-  const overlay = document.getElementById('globe-labels-overlay');
-  if (!overlay) return;
-  overlay.innerHTML = '';
-  STATE.globeLabels = [];
-  
-  const allLabels = [
-    ...STATE.locationLabels.countries,
-    ...STATE.locationLabels.cities,
-    ...STATE.locationLabels.states
-  ];
-  
-  // 为每个位置创建HTML标签元素
-  allLabels.forEach(location => {
-    const el = document.createElement('div');
-    el.className = 'globe-label ' + location.type;
-    el.textContent = location.name;
-    el.style.display = 'none';
-    overlay.appendChild(el);
-    STATE.globeLabels.push({
-      el: el,
-      position: Cesium.Cartesian3.fromDegrees(location.lon, location.lat, 0),
-      type: location.type
-    });
-  });
-  
-  // 注册每帧更新标签位置的回调
-  if (STATE._labelRenderHandler) {
-    STATE._labelRenderHandler();
-  }
-  STATE._labelRenderHandler = STATE.viewer.scene.postRender.addEventListener(() => {
-    if (!STATE.showLocationLabels) {
-      overlay.style.display = 'none';
-      return;
-    }
-    overlay.style.display = '';
-    const scene = STATE.viewer.scene;
-    const camera = scene.camera;
-    const canvas = scene.canvas;
-    const cw = canvas.clientWidth;
-    const ch = canvas.clientHeight;
-    
-    STATE.globeLabels.forEach(lbl => {
-      if (!STATE.labelVisibility[lbl.type]) {
-        lbl.el.style.display = 'none';
-        return;
-      }
-      // 将3D坐标投影到屏幕
-      const sp = Cesium.SceneTransforms.wgs84ToWindowCoordinates(scene, lbl.position);
-      if (!sp) { lbl.el.style.display = 'none'; return; }
-      
-      const sx = sp.x;
-      const sy = sp.y;
-      
-      // 检查是否在屏幕范围内
-      if (sx < -50 || sx > cw + 50 || sy < -30 || sy > ch + 30) {
-        lbl.el.style.display = 'none';
-        return;
-      }
-      
-      // 检查是否在地球背面（相机看不到的地方）
-      const camDir = Cesium.Cartesian3.normalize(camera.position, new Cesium.Cartesian3());
-      const labelDir = Cesium.Cartesian3.normalize(Cesium.Cartesian3.clone(lbl.position), new Cesium.Cartesian3());
-      const dot = Cesium.Cartesian3.dot(camDir, labelDir);
-      if (dot < -0.15) {
-        lbl.el.style.display = 'none';
-        return;
-      }
-      
-      lbl.el.style.display = '';
-      lbl.el.style.left = sx + 'px';
-      lbl.el.style.top = sy + 'px';
-      
-      // 根据相机距离调整透明度
-      const dist = Cesium.Cartesian3.distance(camera.position, lbl.position);
-      let opacity = 1;
-      if (lbl.type === 'country') {
-        opacity = dist > 50000000 ? 0 : dist > 40000000 ? (50000000 - dist) / 10000000 : 1;
-      } else if (lbl.type === 'state') {
-        opacity = dist > 30000000 ? 0 : dist > 22000000 ? (30000000 - dist) / 8000000 : 1;
-      } else {
-        opacity = dist > 18000000 ? 0 : dist > 12000000 ? (18000000 - dist) / 6000000 : 1;
-      }
-      lbl.el.style.opacity = Math.max(0, Math.min(1, opacity));
-    });
-  });
-  
-  console.log('🏷 位置标签加载完成 (HTML覆盖层模式)');
-}
-
 function toggleLocationLabels() {
-  STATE.showLocationLabels = !STATE.showLocationLabels;
-  const overlay = document.getElementById('globe-labels-overlay');
-  if (overlay) overlay.style.display = STATE.showLocationLabels ? '' : 'none';
-  showToast(STATE.showLocationLabels ? '🏷 显示位置标签' : '🏷 隐藏位置标签');
+  showToast('🏷 地名标注来自天地图注记层');
 }
 
 function toggleLabelType(type) {
-  STATE.labelVisibility[type] = !STATE.labelVisibility[type];
   const typeNames = { country: '国家', state: '省州', city: '城市' };
-  showToast(STATE.labelVisibility[type] ? `🏷 显示${typeNames[type]}标签` : `🏷 隐藏${typeNames[type]}标签`);
+  showToast(`🏷 ${typeNames[type]}标签由天地图提供`);
 }
 
 // 切换底图功能
@@ -5351,9 +5214,7 @@ function changeBaseMap(mapType) {
         break;
         
       case 'ion-aerial':
-        // 使用天地图卫星影像 — 多服务器负载均衡，最高画质
-        // 注：不再叠加天地图中文注记层(cia_w)，因其字体在3D地球上过小几乎不可见
-        // 改由自定义大字体位置标签提供地名显示
+        // 使用天地图卫星影像 + 中文注记层 — 多服务器负载均衡，最高画质
         try {
           newLayer = layers.addImageryProvider(
             new Cesium.UrlTemplateImageryProvider({
@@ -5364,7 +5225,17 @@ function changeBaseMap(mapType) {
               tilingScheme: new Cesium.WebMercatorTilingScheme()
             })
           );
-          showToast('🛰️ 已切换到天地图卫星影像');
+          // 叠加天地图中文注记层(cia_w)，显示原生地名
+          newLabelLayer = layers.addImageryProvider(
+            new Cesium.UrlTemplateImageryProvider({
+              url: 'https://t{s}.tianditu.gov.cn/cia_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
+              subdomains: ['0','1','2','3','4','5','6','7'],
+              minimumLevel: 0,
+              maximumLevel: 18,
+              tilingScheme: new Cesium.WebMercatorTilingScheme()
+            })
+          );
+          showToast('🛰️ 已切换到天地图卫星影像（含中文注记）');
         } catch(e) {
           console.warn('天地图加载失败，回退到 Cesium Ion 卫星图');
           newLayer = layers.addImageryProvider(
@@ -5714,8 +5585,7 @@ function initCesium() {
         STATE.isLoading = false;
         document.getElementById('loading-overlay').style.display = 'none';
         
-        // 继续添加其他功能
-        addLocationLabels();
+        // 继续其他初始化
         
         console.log('✅ 初始化完成');
       }
