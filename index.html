@@ -5385,69 +5385,91 @@ function changeBaseMap(mapType) {
         
       case 'ion-aerial':
         // Cesium Ion 超高清卫星影像 + 天地图cia_w中文注记层
-        try {
-          // 底图：Cesium Ion Bing Maps Aerial（超高清卫星影像）
-          newLayer = layers.addImageryProvider(
-            new Cesium.IonImageryProvider({ assetId: 2 })
-          );
-          // 叠加天地图中文注记层(cia_w)，通过拦截requestImage实现文字放大2倍
-          const ciaProvider = new Cesium.UrlTemplateImageryProvider({
-            url: 'https://t{s}.tianditu.gov.cn/cia_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
-            subdomains: ['0','1','2','3','4','5','6','7'],
-            minimumLevel: 0,
-            maximumLevel: 18,
-            tilingScheme: new Cesium.WebMercatorTilingScheme()
-          });
-          // 拦截瓦片请求：加载高一级瓦片并裁切子区域，使文字放大2倍
-          (function() {
-            const ts = ciaProvider.tilingScheme;
-            const origRequest = ciaProvider.requestImage.bind(ciaProvider);
-            ciaProvider.requestImage = function(x, y, level, request) {
-              const newLevel = Math.min(level + 1, 18);
-              if (level >= 18) {
-                return Promise.resolve(origRequest(x, y, level, request));
-              }
-              return Promise.resolve(origRequest(x, y, newLevel, request)).then(function(img) {
-                if (!img) return undefined;
-                try {
-                  var iw = img.width || img.naturalWidth || 256;
-                  var ih = img.height || img.naturalHeight || 256;
-                  var rect = ts.tileXYToRectangle(x, y, level);
-                  var center = Cesium.Rectangle.center(rect);
-                  var subTile = ts.positionToTileXY(center, newLevel);
-                  if (!subTile) return img;
-                  var subRect = ts.tileXYToRectangle(subTile.x, subTile.y, newLevel);
-                  var subW = iw / 2, subH = ih / 2;
-                  var sx = rect.west < subRect.west ? subW : 0;
-                  var sy = rect.north > subRect.north ? 0 : subH;
-                  var c = document.createElement('canvas');
-                  c.width = 256; c.height = 256;
-                  var ctx = c.getContext('2d');
-                  ctx.imageSmoothingEnabled = true;
-                  ctx.imageSmoothingQuality = 'high';
-                  ctx.drawImage(img, sx, sy, subW, subH, 0, 0, 256, 256);
-                  return c;
-                } catch(e) {
-                  return img;
-                }
-              }).catch(function() { return undefined; });
-            };
-          })();
-          newLabelLayer = layers.addImageryProvider(ciaProvider);
-          showToast('🛰️ 已切换到 Cesium 超高清卫星影像 + 天地图中文注记');
-        } catch(e) {
-          console.warn('Cesium Ion 加载失败，回退到天地图卫星图:', e);
-          newLayer = layers.addImageryProvider(
-            new Cesium.UrlTemplateImageryProvider({
-              url: 'https://t{s}.tianditu.gov.cn/img_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
+        // IonImageryProvider.fromAssetId 是异步的，需要 .then() 处理
+        (function() {
+          var fallbackToTianditu = function(err) {
+            console.warn('Cesium Ion 加载失败，回退到天地图:', err);
+            layers.addImageryProvider(
+              new Cesium.UrlTemplateImageryProvider({
+                url: 'https://t{s}.tianditu.gov.cn/img_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
+                subdomains: ['0','1','2','3','4','5','6','7'],
+                minimumLevel: 0, maximumLevel: 18,
+                tilingScheme: new Cesium.WebMercatorTilingScheme()
+              })
+            );
+            // 也加上 cia_w 注记
+            var fbCia = new Cesium.UrlTemplateImageryProvider({
+              url: 'https://t{s}.tianditu.gov.cn/cia_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
               subdomains: ['0','1','2','3','4','5','6','7'],
-              minimumLevel: 0,
-              maximumLevel: 18,
+              minimumLevel: 0, maximumLevel: 18,
               tilingScheme: new Cesium.WebMercatorTilingScheme()
-            })
-          );
-          showToast('🛰️ Cesium Ion 不可用，已回退到天地图卫星图');
-        }
+            });
+            layers.addImageryProvider(fbCia);
+            showToast('🛰️ Cesium Ion 不可用，已回退到天地图卫星图 + 中文注记');
+          };
+          
+          var addCiaOverlay = function() {
+            var ciaProvider = new Cesium.UrlTemplateImageryProvider({
+              url: 'https://t{s}.tianditu.gov.cn/cia_w/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=fe49f08ef6f3e9dcb98794dbab4d586c',
+              subdomains: ['0','1','2','3','4','5','6','7'],
+              minimumLevel: 0, maximumLevel: 18,
+              tilingScheme: new Cesium.WebMercatorTilingScheme()
+            });
+            // 拦截瓦片请求：加载高一级瓦片并裁切子区域，使文字放大2倍
+            (function() {
+              var ts = ciaProvider.tilingScheme;
+              var origRequest = ciaProvider.requestImage.bind(ciaProvider);
+              ciaProvider.requestImage = function(x, y, level, request) {
+                var newLevel = Math.min(level + 1, 18);
+                if (level >= 18) return Promise.resolve(origRequest(x, y, level, request));
+                return Promise.resolve(origRequest(x, y, newLevel, request)).then(function(img) {
+                  if (!img) return undefined;
+                  try {
+                    var iw = img.width || img.naturalWidth || 256;
+                    var ih = img.height || img.naturalHeight || 256;
+                    var rect = ts.tileXYToRectangle(x, y, level);
+                    var center = Cesium.Rectangle.center(rect);
+                    var subTile = ts.positionToTileXY(center, newLevel);
+                    if (!subTile) return img;
+                    var subRect = ts.tileXYToRectangle(subTile.x, subTile.y, newLevel);
+                    var subW = iw / 2, subH = ih / 2;
+                    var sx = rect.west < subRect.west ? subW : 0;
+                    var sy = rect.north > subRect.north ? 0 : subH;
+                    var c = document.createElement('canvas');
+                    c.width = 256; c.height = 256;
+                    var ctx = c.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, sx, sy, subW, subH, 0, 0, 256, 256);
+                    return c;
+                  } catch(e) { return img; }
+                }).catch(function() { return undefined; });
+              };
+            })();
+            layers.addImageryProvider(ciaProvider);
+          };
+
+          // 尝试使用 fromAssetId（CesiumJS 1.104+ 推荐的异步 API）
+          if (typeof Cesium.IonImageryProvider.fromAssetId === 'function') {
+            Cesium.IonImageryProvider.fromAssetId(2).then(function(provider) {
+              layers.addImageryProvider(provider);
+              addCiaOverlay();
+              showToast('🛰️ 已切换到 Cesium 超高清卫星影像 + 天地图中文注记');
+            }).catch(fallbackToTianditu);
+          } else {
+            // 回退到旧版构造函数
+            try {
+              newLayer = layers.addImageryProvider(
+                new Cesium.IonImageryProvider({ assetId: 2 })
+              );
+              addCiaOverlay();
+              showToast('🛰️ 已切换到 Cesium 超高清卫星影像 + 天地图中文注记');
+            } catch(e) {
+              fallbackToTianditu(e);
+            }
+          }
+        })();
+        return; // 异步加载，提前返回
         break;
         
       case 'ion-street':
