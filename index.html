@@ -23,6 +23,8 @@
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.104/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
   <!-- hls.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js"></script>
+  <!-- QR Code library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
     
@@ -1325,6 +1327,18 @@
       gap: 6px;
       padding: 4px 14px 8px;
     }
+    /* 紧凑标签布局 — 一排4个 */
+    .filter-chips-compact {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      padding: 2px 10px 6px;
+    }
+    .filter-chips-compact .filter-chip {
+      padding: 4px 6px;
+      font-size: 10.5px;
+    }
+    .filter-chips-compact .filter-chip .chip-count { display: none; }
+    .filter-chips-compact .filter-label { padding: 6px 10px 2px; font-size: 8px; }
 
     /* 标签基础样式 — 磨砂玻璃 */
     .filter-chip {
@@ -1764,6 +1778,38 @@
     .scale-bar::before { left: 0; }
     .scale-bar::after { right: 0; }
     
+    /* 地球地名HTML覆盖层 — 确保文字始终可见 */
+    #globe-labels-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 100;
+      overflow: hidden;
+    }
+    .globe-label {
+      position: absolute;
+      white-space: nowrap;
+      text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 12px rgba(0,0,0,0.8), 0 1px 3px rgba(0,0,0,1);
+      transform: translate(-50%, -50%);
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+    .globe-label.country {
+      font-size: 16px;
+      font-weight: 800;
+      color: #FFD700;
+      letter-spacing: 1px;
+    }
+    .globe-label.state {
+      font-size: 13px;
+      font-weight: 700;
+      color: #98FB98;
+    }
+    .globe-label.city {
+      font-size: 11px;
+      font-weight: 500;
+      color: #F0F8FF;
+    }
 
     
     /* 电台信息提示框 - Premium */
@@ -2440,6 +2486,65 @@
     .eq-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: all 0.3s; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
     .eq-switch.on::after { left: 20px; }
     
+    /* EQ下拉菜单 */
+    .eq-dropdown {
+      position: fixed;
+      z-index: 5000;
+      width: 200px;
+      background: rgba(6,10,22,0.96);
+      backdrop-filter: blur(24px) saturate(1.4);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 20px rgba(0,212,255,0.05);
+      padding: 8px;
+      animation: tooltipIn 0.2s ease;
+    }
+    .eq-dropdown-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.7);
+      font-family: var(--font-sans);
+    }
+    .eq-dropdown-header .eq-current-name {
+      font-size: 11px;
+      color: rgba(0,212,255,0.7);
+      font-weight: 600;
+      margin-left: auto;
+    }
+    .eq-switch-mini {
+      width: 32px; height: 18px; border-radius: 9px; background: rgba(255,255,255,0.1);
+      border: none; cursor: pointer; position: relative; transition: all 0.3s;
+    }
+    .eq-switch-mini.on { background: rgba(0,212,255,0.3); }
+    .eq-switch-mini::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: all 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    .eq-switch-mini.on::after { left: 16px; }
+    .eq-dropdown-presets {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+    }
+    .eq-preset-mini {
+      padding: 6px 4px;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.55);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+      text-align: center;
+    }
+    .eq-preset-mini:hover { color: #fff; background: rgba(255,255,255,0.08); border-color: rgba(0,212,255,0.2); }
+    .eq-preset-mini.active { color: #00D4FF; border-color: rgba(0,212,255,0.35); background: rgba(0,212,255,0.1); }
+    
     /* ══════ 电台分享 ══════ */
     .share-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 5000; display: none; align-items: center; justify-content: center; }
     .share-overlay.show { display: flex; }
@@ -2548,18 +2653,18 @@
     </div>
     
     <nav class="continent-nav" role="navigation" aria-label="大洲导航">
-      <button class="nav-link active" onclick="flyToContinent('global',this)">全球 <span class="nav-count" id="nc-global">—</span></button>
-      <button class="nav-link" onclick="flyToContinent('asia',this)">亚洲 <span class="nav-count" id="nc-asia">—</span></button>
-      <button class="nav-link" onclick="flyToContinent('europe',this)">欧洲 <span class="nav-count" id="nc-europe">—</span></button>
-      <button class="nav-link" onclick="flyToContinent('america',this)">美洲 <span class="nav-count" id="nc-america">—</span></button>
-      <button class="nav-link" onclick="flyToContinent('africa',this)">非洲 <span class="nav-count" id="nc-africa">—</span></button>
-      <button class="nav-link" onclick="flyToContinent('oceania',this)">大洋洲 <span class="nav-count" id="nc-oceania">—</span></button>
+      <button class="nav-link active" onclick="flyToContinent('global',this)">全球</button>
+      <button class="nav-link" onclick="flyToContinent('asia',this)">亚洲</button>
+      <button class="nav-link" onclick="flyToContinent('europe',this)">欧洲</button>
+      <button class="nav-link" onclick="flyToContinent('america',this)">美洲</button>
+      <button class="nav-link" onclick="flyToContinent('africa',this)">非洲</button>
+      <button class="nav-link" onclick="flyToContinent('oceania',this)">大洋洲</button>
     </nav>
     <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
       <!-- 移动端搜索按钮 -->
       <button class="icon-btn" id="mobile-search-btn" onclick="toggleMobileSearch()" title="搜索" aria-label="搜索">🔍</button>
       <!-- 收藏按钮 -->
-      <button class="icon-btn" id="stats-btn" onclick="openStatsModal()" title="收听统计">📊</button>
+      <button class="icon-btn" id="stats-btn" onclick="switchTab(event,'fav');if(document.getElementById('panel-left').classList.contains('collapsed-left'))togglePanel('left');" title="收藏列表">❤️</button>
       <button class="icon-btn" id="trending-btn" onclick="openTrendingPanel()" title="全球热门">🔥</button>
       <button class="icon-btn bookmark-btn" id="bookmark-btn" onclick="toggleBookmarkTooltip(event)" title="收藏网站" aria-label="收藏网站">☆</button>
       <!-- 登录按钮（未登录时显示） -->
@@ -2609,46 +2714,46 @@
         </div>
         <div class="filter-section panel-continent-nav">
           <div class="filter-label">大洲</div>
-          <div class="filter-chips" id="continent-chips">
-            <div class="filter-chip active" onclick="flyToContinent('global',this)">全球 <span class="chip-count" id="pnc-global">—</span></div>
-            <div class="filter-chip" onclick="flyToContinent('asia',this)">亚洲 <span class="chip-count" id="pnc-asia">—</span></div>
-            <div class="filter-chip" onclick="flyToContinent('europe',this)">欧洲 <span class="chip-count" id="pnc-europe">—</span></div>
-            <div class="filter-chip" onclick="flyToContinent('america',this)">美洲 <span class="chip-count" id="pnc-america">—</span></div>
-            <div class="filter-chip" onclick="flyToContinent('africa',this)">非洲 <span class="chip-count" id="pnc-africa">—</span></div>
-            <div class="filter-chip" onclick="flyToContinent('oceania',this)">大洋洲 <span class="chip-count" id="pnc-oceania">—</span></div>
+          <div class="filter-chips filter-chips-compact" id="continent-chips">
+            <div class="filter-chip active" onclick="flyToContinent('global',this)">全球</div>
+            <div class="filter-chip" onclick="flyToContinent('asia',this)">亚洲</div>
+            <div class="filter-chip" onclick="flyToContinent('europe',this)">欧洲</div>
+            <div class="filter-chip" onclick="flyToContinent('america',this)">美洲</div>
+            <div class="filter-chip" onclick="flyToContinent('africa',this)">非洲</div>
+            <div class="filter-chip" onclick="flyToContinent('oceania',this)">大洋洲</div>
           </div>
         </div>
         <div class="filter-section">
           <div class="filter-label">类型</div>
-          <div class="filter-chips" id="genre-filters">
-              <div class="filter-chip active" data-genre="all" onclick="filterByGenre('all')">全部<span class="chip-count" id="count-all">—</span></div>
-              <div class="filter-chip" data-genre="pop" onclick="filterByGenre('pop')">流行<span class="chip-count" id="count-pop">—</span></div>
-              <div class="filter-chip" data-genre="rock" onclick="filterByGenre('rock')">摇滚<span class="chip-count" id="count-rock">—</span></div>
-              <div class="filter-chip" data-genre="jazz" onclick="filterByGenre('jazz')">爵士<span class="chip-count" id="count-jazz">—</span></div>
-              <div class="filter-chip" data-genre="classical" onclick="filterByGenre('classical')">古典<span class="chip-count" id="count-classical">—</span></div>
-              <div class="filter-chip" data-genre="news" onclick="filterByGenre('news')">新闻<span class="chip-count" id="count-news">—</span></div>
-              <div class="filter-chip" data-genre="talk" onclick="filterByGenre('talk')">脱口秀<span class="chip-count" id="count-talk">—</span></div>
-              <div class="filter-chip" data-genre="electronic" onclick="filterByGenre('electronic')">电子<span class="chip-count" id="count-electronic">—</span></div>
-              <div class="filter-chip" data-genre="hip hop" onclick="filterByGenre('hip hop')">嘻哈<span class="chip-count" id="count-hiphop">—</span></div>
-              <div class="filter-chip" data-genre="country" onclick="filterByGenre('country')">乡村<span class="chip-count" id="count-country">—</span></div>
-              <div class="filter-chip" data-genre="religious" onclick="filterByGenre('religious')">宗教<span class="chip-count" id="count-religious">—</span></div>
+          <div class="filter-chips filter-chips-compact" id="genre-filters">
+              <div class="filter-chip active" data-genre="all" onclick="filterByGenre('all')">全部</div>
+              <div class="filter-chip" data-genre="pop" onclick="filterByGenre('pop')">流行</div>
+              <div class="filter-chip" data-genre="rock" onclick="filterByGenre('rock')">摇滚</div>
+              <div class="filter-chip" data-genre="jazz" onclick="filterByGenre('jazz')">爵士</div>
+              <div class="filter-chip" data-genre="classical" onclick="filterByGenre('classical')">古典</div>
+              <div class="filter-chip" data-genre="news" onclick="filterByGenre('news')">新闻</div>
+              <div class="filter-chip" data-genre="talk" onclick="filterByGenre('talk')">脱口秀</div>
+              <div class="filter-chip" data-genre="electronic" onclick="filterByGenre('electronic')">电子</div>
+              <div class="filter-chip" data-genre="hip hop" onclick="filterByGenre('hip hop')">嘻哈</div>
+              <div class="filter-chip" data-genre="country" onclick="filterByGenre('country')">乡村</div>
+              <div class="filter-chip" data-genre="religious" onclick="filterByGenre('religious')">宗教</div>
             </div>
         </div>
         <div class="filter-section">
           <div class="filter-label">语言</div>
-          <div class="filter-chips" id="language-filters">
-              <div class="filter-chip active" data-lang="all" onclick="filterByLanguage('all')">全部<span class="chip-count" id="lcount-all">—</span></div>
-              <div class="filter-chip" data-lang="chinese" onclick="filterByLanguage('chinese')">中文<span class="chip-count" id="lcount-chinese">—</span></div>
-              <div class="filter-chip" data-lang="english" onclick="filterByLanguage('english')">英语<span class="chip-count" id="lcount-english">—</span></div>
-              <div class="filter-chip" data-lang="japanese" onclick="filterByLanguage('japanese')">日语<span class="chip-count" id="lcount-japanese">—</span></div>
-              <div class="filter-chip" data-lang="spanish" onclick="filterByLanguage('spanish')">西班牙语<span class="chip-count" id="lcount-spanish">—</span></div>
-              <div class="filter-chip" data-lang="french" onclick="filterByLanguage('french')">法语<span class="chip-count" id="lcount-french">—</span></div>
-              <div class="filter-chip" data-lang="german" onclick="filterByLanguage('german')">德语<span class="chip-count" id="lcount-german">—</span></div>
-              <div class="filter-chip" data-lang="korean" onclick="filterByLanguage('korean')">韩语<span class="chip-count" id="lcount-korean">—</span></div>
-              <div class="filter-chip" data-lang="portuguese" onclick="filterByLanguage('portuguese')">葡萄牙语<span class="chip-count" id="lcount-portuguese">—</span></div>
-              <div class="filter-chip" data-lang="russian" onclick="filterByLanguage('russian')">俄语<span class="chip-count" id="lcount-russian">—</span></div>
-              <div class="filter-chip" data-lang="arabic" onclick="filterByLanguage('arabic')">阿拉伯语<span class="chip-count" id="lcount-arabic">—</span></div>
-              <div class="filter-chip" data-lang="hindi" onclick="filterByLanguage('hindi')">印地语<span class="chip-count" id="lcount-hindi">—</span></div>
+          <div class="filter-chips filter-chips-compact" id="language-filters">
+              <div class="filter-chip active" data-lang="all" onclick="filterByLanguage('all')">全部</div>
+              <div class="filter-chip" data-lang="chinese" onclick="filterByLanguage('chinese')">中文</div>
+              <div class="filter-chip" data-lang="english" onclick="filterByLanguage('english')">英语</div>
+              <div class="filter-chip" data-lang="japanese" onclick="filterByLanguage('japanese')">日语</div>
+              <div class="filter-chip" data-lang="spanish" onclick="filterByLanguage('spanish')">西语</div>
+              <div class="filter-chip" data-lang="french" onclick="filterByLanguage('french')">法语</div>
+              <div class="filter-chip" data-lang="german" onclick="filterByLanguage('german')">德语</div>
+              <div class="filter-chip" data-lang="korean" onclick="filterByLanguage('korean')">韩语</div>
+              <div class="filter-chip" data-lang="portuguese" onclick="filterByLanguage('portuguese')">葡语</div>
+              <div class="filter-chip" data-lang="russian" onclick="filterByLanguage('russian')">俄语</div>
+              <div class="filter-chip" data-lang="arabic" onclick="filterByLanguage('arabic')">阿语</div>
+              <div class="filter-chip" data-lang="hindi" onclick="filterByLanguage('hindi')">印地</div>
             </div>
         </div>
         <div class="active-filter-bar" id="active-filter-bar"></div>
@@ -2686,6 +2791,7 @@
       <div class="error-text" id="loading-error"></div>
     </div>
     <div id="cesiumContainer"></div>
+    <div id="globe-labels-overlay"></div>
     
 
 
@@ -2749,8 +2855,8 @@
       </div>
       <div class="player-bottom-row">
         <div class="player-extras">
-          <button class="extra-btn" id="sleep-btn" onclick="toggleSleepMenu(event)" title="睡眠定时器">🌙</button>
-          <button class="extra-btn" id="eq-btn" onclick="toggleEQPanel()" title="均衡器">🎛️</button>
+          <button class="extra-btn" id="sleep-btn" onclick="toggleSleepMenu(event)" title="睡眠定时器">⏰</button>
+          <button class="extra-btn" id="eq-btn" onclick="toggleEQPanel(event)" title="均衡器" style="font-size:11px;font-weight:700;letter-spacing:0.5px;">EQ</button>
           <button class="extra-btn" id="share-btn" onclick="openShareModal()" title="分享电台">📤</button>
         </div>
         <div class="volume-control">
@@ -3058,6 +3164,7 @@ const STATE = {
     ]
   },
   labelEntities: [],
+  globeLabels: [],
   showLocationLabels: true, // 启用自定义大字体标签，替代底图小字标签
   currentBaseMap: 'ion-aerial', // 天地图卫星影像（自定义标签提供地名）
   labelVisibility: {
@@ -4207,7 +4314,6 @@ function animateWaveform() {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
 
-  // 初始化平滑能量数组
   if (!spectrumBars) {
     spectrumBars = new Float32Array(BAR_COUNT);
   }
@@ -4218,7 +4324,6 @@ function animateWaveform() {
     if (!STATE.isPlaying) { stopWaveformAnimation(); return; }
     spectrumAnimId = requestAnimationFrame(draw);
 
-    // 调整 Canvas 尺寸
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
@@ -4228,22 +4333,24 @@ function animateWaveform() {
       ctx.scale(dpr, dpr);
     }
 
-    // 获取频域数据
     if (analyser) {
       analyser.getByteFrequencyData(freqData);
     }
 
     ctx.clearRect(0, 0, w, h);
 
-    const maxH = h;
-    const padY = 4;
+    const padX = 4;
+    const padY = 3;
+    const gap = 1.5;
+    const barW = (w - padX * 2 - gap * (BAR_COUNT - 1)) / BAR_COUNT;
+    const maxBarH = h - padY * 2;
 
     // 平滑过渡频域数据
     for (let i = 0; i < BAR_COUNT; i++) {
       const logIndex = Math.pow(i / BAR_COUNT, 1.3) * freqData.length;
       const binIndex = Math.min(Math.floor(logIndex), freqData.length - 1);
       const rawValue = freqData[binIndex] / 255;
-      const speed = rawValue > spectrumBars[i] ? 0.4 : 0.1;
+      const speed = rawValue > spectrumBars[i] ? 0.45 : 0.12;
       spectrumBars[i] += (rawValue - spectrumBars[i]) * speed;
     }
 
@@ -4252,105 +4359,52 @@ function animateWaveform() {
     for (let i = 0; i < spectrumBars.length; i++) totalEnergy += spectrumBars[i];
     totalEnergy /= spectrumBars.length;
 
-    // 生成波形采样点（Catmull-Rom 样条插值）
-    const pointCount = 80;
-    const points = [];
-    for (let i = 0; i <= pointCount; i++) {
-      const t = i / pointCount;
-      const barPos = t * (BAR_COUNT - 1);
-      const barIdx = Math.floor(barPos);
-      const barFrac = barPos - barIdx;
-      const v0 = spectrumBars[Math.max(0, barIdx - 1)] || 0;
-      const v1 = spectrumBars[barIdx] || 0;
-      const v2 = spectrumBars[Math.min(BAR_COUNT - 1, barIdx + 1)] || 0;
-      const v3 = spectrumBars[Math.min(BAR_COUNT - 1, barIdx + 2)] || 0;
-      const val = 0.5 * ((2*v1) + (-v0+v2)*barFrac + (2*v0-5*v1+4*v2-v3)*barFrac*barFrac + (-v0+3*v1-3*v2+v3)*barFrac*barFrac*barFrac);
-      const clampedVal = Math.max(0, Math.min(1, val));
-      const x = t * w;
-      const y = h - padY - clampedVal * (maxH - padY * 2);
-      points.push({ x, y, val: clampedVal });
-    }
-
-    // 动态色彩
     const hue1 = 190 + totalEnergy * 30;
-    const hue2 = 250 + totalEnergy * 20;
+    const hue2 = 260 + totalEnergy * 20;
 
-    // ---- 波形填充（渐变区域）----
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, h);
-    ctx.lineTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-      const cpx = (prev.x + curr.x) / 2;
-      ctx.quadraticCurveTo(prev.x + (curr.x - prev.x) * 0.5, prev.y, cpx, (prev.y + curr.y) / 2);
-    }
-    const last = points[points.length - 1];
-    ctx.lineTo(last.x, last.y);
-    ctx.lineTo(last.x, h);
-    ctx.closePath();
+    // 绘制每个柱形条
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const val = spectrumBars[i];
+      const barH = Math.max(2, val * maxBarH);
+      const x = padX + i * (barW + gap);
+      const y = h - padY - barH;
 
-    const fillGrad = ctx.createLinearGradient(0, 0, 0, h);
-    fillGrad.addColorStop(0, 'hsla(' + hue1 + ', 90%, 65%, 0.18)');
-    fillGrad.addColorStop(0.5, 'hsla(' + hue1 + ', 80%, 55%, 0.08)');
-    fillGrad.addColorStop(1, 'hsla(' + hue2 + ', 70%, 50%, 0.01)');
-    ctx.fillStyle = fillGrad;
-    ctx.fill();
+      // 柱形渐变填充
+      const grad = ctx.createLinearGradient(x, y, x, h - padY);
+      const barHue = hue1 + (i / BAR_COUNT) * (hue2 - hue1);
+      grad.addColorStop(0, 'hsla(' + barHue + ', 90%, 70%, 0.95)');
+      grad.addColorStop(0.5, 'hsla(' + barHue + ', 85%, 60%, 0.85)');
+      grad.addColorStop(1, 'hsla(' + barHue + ', 80%, 50%, 0.6)');
 
-    // ---- 主波形线条 ----
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-      const cpx = (prev.x + curr.x) / 2;
-      ctx.quadraticCurveTo(prev.x + (curr.x - prev.x) * 0.5, prev.y, cpx, (prev.y + curr.y) / 2);
-    }
-    ctx.lineTo(last.x, last.y);
+      // 绘制圆角柱形
+      const r = Math.min(barW / 2, 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + barW - r, y);
+      ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+      ctx.lineTo(x + barW, h - padY);
+      ctx.lineTo(x, h - padY);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
 
-    const lineGrad = ctx.createLinearGradient(0, 0, w, 0);
-    lineGrad.addColorStop(0, 'hsla(' + hue2 + ', 80%, 65%, 0.7)');
-    lineGrad.addColorStop(0.3, 'hsla(' + hue1 + ', 90%, 68%, 0.9)');
-    lineGrad.addColorStop(0.7, 'hsla(' + hue1 + ', 95%, 72%, 0.9)');
-    lineGrad.addColorStop(1, 'hsla(' + hue2 + ', 80%, 65%, 0.7)');
-    ctx.strokeStyle = lineGrad;
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.shadowColor = 'hsla(' + hue1 + ', 90%, 65%, 0.5)';
-    ctx.shadowBlur = 8 + totalEnergy * 16;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+      // 柱顶高亮
+      if (val > 0.05) {
+        ctx.fillStyle = 'hsla(' + barHue + ', 95%, 80%, ' + (0.3 + val * 0.5) + ')';
+        ctx.fillRect(x, y, barW, Math.min(2, barH * 0.1));
+      }
 
-    // ---- 第二层波形（偏移淡色，深度感）----
-    ctx.beginPath();
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      const py = p.y + (h - p.y) * 0.08 + 3;
-      if (i === 0) { ctx.moveTo(p.x, py); }
-      else {
-        const prev = points[i - 1];
-        const prevPy = prev.y + (h - prev.y) * 0.08 + 3;
-        const cpx = (prev.x + p.x) / 2;
-        ctx.quadraticCurveTo(prev.x + (p.x - prev.x) * 0.5, prevPy, cpx, (prevPy + py) / 2);
+      // 发光效果
+      if (val > 0.3) {
+        ctx.shadowColor = 'hsla(' + barHue + ', 90%, 65%, 0.4)';
+        ctx.shadowBlur = val * 8;
+        ctx.fillStyle = 'hsla(' + barHue + ', 90%, 70%, 0.1)';
+        ctx.fillRect(x - 1, y, barW + 2, barH);
+        ctx.shadowBlur = 0;
       }
     }
-    ctx.strokeStyle = 'hsla(' + hue2 + ', 70%, 60%, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // ---- 顶部高光线 ----
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y - 1);
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-      const cpx = (prev.x + curr.x) / 2;
-      ctx.quadraticCurveTo(prev.x + (curr.x - prev.x) * 0.5, prev.y - 1, cpx, (prev.y + curr.y) / 2 - 1);
-    }
-    ctx.strokeStyle = 'rgba(255,255,255,' + (0.06 + totalEnergy * 0.12) + ')';
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
   }
 
   draw();
@@ -4361,7 +4415,6 @@ function stopWaveformAnimation() {
     cancelAnimationFrame(spectrumAnimId);
     spectrumAnimId = null;
   }
-  // 渐变回落：波形逐渐平息后停止
   const canvas = document.getElementById('spectrum-canvas');
   if (!canvas || !spectrumBars) return;
   const ctx = canvas.getContext('2d');
@@ -4379,28 +4432,18 @@ function stopWaveformAnimation() {
     const h = canvas.clientHeight;
     ctx.clearRect(0, 0, w, h);
     const fadeAlpha = 1 - fadeFrames / 25;
-    for (let i = 0; i < BAR_COUNT; i++) spectrumBars[i] *= 0.88;
-    const pointCount = 60;
-    const pts = [];
-    for (let i = 0; i <= pointCount; i++) {
-      const t = i / pointCount;
-      const barPos = t * (BAR_COUNT - 1);
-      const idx = Math.floor(barPos);
-      const frac = barPos - idx;
-      const v1 = spectrumBars[idx] || 0;
-      const v2 = spectrumBars[Math.min(BAR_COUNT - 1, idx + 1)] || 0;
-      const val = v1 + (v2 - v1) * frac;
-      pts.push({ x: t * w, y: h - 4 - val * (h - 8) });
+    for (let i = 0; i < BAR_COUNT; i++) spectrumBars[i] *= 0.85;
+    const padX = 4, padY = 3, gap = 1.5;
+    const barW = (w - padX * 2 - gap * (BAR_COUNT - 1)) / BAR_COUNT;
+    const maxBarH = h - padY * 2;
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const val = spectrumBars[i];
+      const barH = Math.max(1, val * maxBarH);
+      const x = padX + i * (barW + gap);
+      const y = h - padY - barH;
+      ctx.fillStyle = 'hsla(200, 80%, 65%, ' + (fadeAlpha * 0.6) + ')';
+      ctx.fillRect(x, y, barW, barH);
     }
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) {
-      const cpx = (pts[i-1].x + pts[i].x) / 2;
-      ctx.quadraticCurveTo(pts[i-1].x + (pts[i].x - pts[i-1].x)*0.5, pts[i-1].y, cpx, (pts[i-1].y + pts[i].y) / 2);
-    }
-    ctx.strokeStyle = 'hsla(200, 80%, 65%,' + (fadeAlpha * 0.6) + ')';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
   }
   fade();
 }
@@ -4686,13 +4729,8 @@ function selectStation(station) {
   });
   updateFavBtn();
   
-  // 飞到电台位置
+  // 飞到电台位置（保持当前视角不缩放）
   if (STATE.viewer && station.geo_lat && station.geo_long) {
-    STATE.viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(station.geo_long, station.geo_lat, 5000000),
-      duration: 2
-    });
-    
     highlightStation(station);
   }
   
@@ -4722,14 +4760,16 @@ function updatePlayer() {
     const bitrate = station.bitrate ? station.bitrate + ' kbps' : '--';
     if (metaInline) metaInline.textContent = '\uD83C\uDF0D ' + countryCn + ' \u00B7 ' + bitrate + ' \u00B7 连接中...';
     
-    // 封面显示真实LOGO
-    const favicon = station.favicon;
-    if (favicon && (favicon.startsWith('http://') || favicon.startsWith('https://'))) {
+    // 封面显示真实LOGO（自动升级http为https避免混合内容阻止）
+    const rawFavicon = station.favicon;
+    const favicon = rawFavicon ? rawFavicon.replace(/^http:\/\//i, 'https://') : '';
+    if (favicon && favicon.startsWith('https://')) {
       coverEl.textContent = '';
       const img = document.createElement('img');
+      img.crossOrigin = 'anonymous';
       img.src = favicon;
-      img.style.cssText = 'width:100%;height:100%;border-radius:10px;object-fit:contain;';
-      img.onerror = function() { this.parentElement.textContent = '\uD83D\uDCFB'; };
+      img.style.cssText = 'width:100%;height:100%;border-radius:10px;object-fit:contain;background:transparent;';
+      img.onerror = function() { this.remove(); this.parentElement.textContent = '\uD83D\uDCFB'; };
       coverEl.appendChild(img);
     } else {
       const emoji = getCountryEmoji(station.countrycode);
@@ -5168,11 +5208,11 @@ function deleteBookmark(id) {
 function addLocationLabels() {
   if (!STATE.viewer) return;
   
-  // 移除旧的位置标签
-  STATE.labelEntities.forEach(e => {
-    STATE.viewer.entities.remove(e);
-  });
-  STATE.labelEntities = [];
+  // 清除旧的HTML标签
+  const overlay = document.getElementById('globe-labels-overlay');
+  if (!overlay) return;
+  overlay.innerHTML = '';
+  STATE.globeLabels = [];
   
   const allLabels = [
     ...STATE.locationLabels.countries,
@@ -5180,122 +5220,94 @@ function addLocationLabels() {
     ...STATE.locationLabels.states
   ];
   
-  const isMobileLabels = window.innerWidth <= 900;
-  
+  // 为每个位置创建HTML标签元素
   allLabels.forEach(location => {
-    let labelFont, labelColor, labelSize, labelOutlineW;
-    
-    // 根据类型设置不同的样式 (移动端进一步放大以保证可读性)
-    const scale = isMobileLabels ? 2.0 : 1;
-    switch(location.type) {
-      case 'country':
-        labelFont = `bold ${Math.round(52*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
-        labelColor = Cesium.Color.fromCssColorString('#FFD700');
-        labelSize = Math.round(52*scale);
-        labelOutlineW = isMobileLabels ? 8 : 5;
-        break;
-      case 'state':
-        labelFont = `bold ${Math.round(40*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
-        labelColor = Cesium.Color.fromCssColorString('#98FB98');
-        labelSize = Math.round(40*scale);
-        labelOutlineW = isMobileLabels ? 7 : 4;
-        break;
-      case 'city':
-        labelFont = `${Math.round(32*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
-        labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
-        labelSize = Math.round(32*scale);
-        labelOutlineW = isMobileLabels ? 6 : 4;
-        break;
-      default:
-        labelFont = `${Math.round(32*scale)}px "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif`;
-        labelColor = Cesium.Color.fromCssColorString('#F0F8FF');
-        labelSize = Math.round(32*scale);
-        labelOutlineW = isMobileLabels ? 6 : 4;
-    }
-    
-    const entity = STATE.viewer.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(location.lon, location.lat, 100),
-      allowPicking: false,
-      label: {
-        text: location.name,
-        font: labelFont,
-        fillColor: labelColor,
-        outlineColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.9)'),
-        outlineWidth: labelOutlineW,
-        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        verticalOrigin: Cesium.VerticalOrigin.CENTER,
-        horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-        pixelOffset: new Cesium.Cartesian2(0, 0),
-        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-        show: STATE.showLocationLabels && STATE.labelVisibility[location.type],
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
-        scaleByDistance: false,
-        translucencyByDistance: false,
-        distanceDisplayCondition: location.type === 'country' 
-          ? new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 60000000 : 45000000)
-          : location.type === 'state'
-            ? new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 45000000 : 30000000)
-            : new Cesium.DistanceDisplayCondition(0, isMobileLabels ? 30000000 : 18000000)
-      },
-      locationType: location.type,
-      _isLocationLabel: true
+    const el = document.createElement('div');
+    el.className = 'globe-label ' + location.type;
+    el.textContent = location.name;
+    el.style.display = 'none';
+    overlay.appendChild(el);
+    STATE.globeLabels.push({
+      el: el,
+      position: Cesium.Cartesian3.fromDegrees(location.lon, location.lat, 0),
+      type: location.type
     });
-    
-    STATE.labelEntities.push(entity);
   });
   
-  console.log('🏷 位置标签加载完成');
+  // 注册每帧更新标签位置的回调
+  if (STATE._labelRenderHandler) {
+    STATE._labelRenderHandler();
+  }
+  STATE._labelRenderHandler = STATE.viewer.scene.postRender.addEventListener(() => {
+    if (!STATE.showLocationLabels) {
+      overlay.style.display = 'none';
+      return;
+    }
+    overlay.style.display = '';
+    const scene = STATE.viewer.scene;
+    const camera = scene.camera;
+    const canvas = scene.canvas;
+    const cw = canvas.clientWidth;
+    const ch = canvas.clientHeight;
+    
+    STATE.globeLabels.forEach(lbl => {
+      if (!STATE.labelVisibility[lbl.type]) {
+        lbl.el.style.display = 'none';
+        return;
+      }
+      // 将3D坐标投影到屏幕
+      const sp = Cesium.SceneTransforms.wgs84ToWindowCoordinates(scene, lbl.position);
+      if (!sp) { lbl.el.style.display = 'none'; return; }
+      
+      const sx = sp.x;
+      const sy = sp.y;
+      
+      // 检查是否在屏幕范围内
+      if (sx < -50 || sx > cw + 50 || sy < -30 || sy > ch + 30) {
+        lbl.el.style.display = 'none';
+        return;
+      }
+      
+      // 检查是否在地球背面（相机看不到的地方）
+      const camDir = Cesium.Cartesian3.normalize(camera.position, new Cesium.Cartesian3());
+      const labelDir = Cesium.Cartesian3.normalize(Cesium.Cartesian3.clone(lbl.position), new Cesium.Cartesian3());
+      const dot = Cesium.Cartesian3.dot(camDir, labelDir);
+      if (dot < -0.15) {
+        lbl.el.style.display = 'none';
+        return;
+      }
+      
+      lbl.el.style.display = '';
+      lbl.el.style.left = sx + 'px';
+      lbl.el.style.top = sy + 'px';
+      
+      // 根据相机距离调整透明度
+      const dist = Cesium.Cartesian3.distance(camera.position, lbl.position);
+      let opacity = 1;
+      if (lbl.type === 'country') {
+        opacity = dist > 50000000 ? 0 : dist > 40000000 ? (50000000 - dist) / 10000000 : 1;
+      } else if (lbl.type === 'state') {
+        opacity = dist > 30000000 ? 0 : dist > 22000000 ? (30000000 - dist) / 8000000 : 1;
+      } else {
+        opacity = dist > 18000000 ? 0 : dist > 12000000 ? (18000000 - dist) / 6000000 : 1;
+      }
+      lbl.el.style.opacity = Math.max(0, Math.min(1, opacity));
+    });
+  });
+  
+  console.log('🏷 位置标签加载完成 (HTML覆盖层模式)');
 }
 
 function toggleLocationLabels() {
   STATE.showLocationLabels = !STATE.showLocationLabels;
-  
-  // 更新所有标签的显示状态
-  STATE.labelEntities.forEach(entity => {
-    if (entity.label) {
-      entity.label.show = STATE.showLocationLabels && STATE.labelVisibility[entity.locationType];
-    }
-    if (entity.point) {
-      entity.point.show = STATE.showLocationLabels && STATE.labelVisibility[entity.locationType];
-    }
-  });
-  
-  // 更新按钮UI
-  const btn = document.getElementById('btn-location-labels');
-  if (btn) {
-    btn.classList.toggle('active', STATE.showLocationLabels);
-  }
-  
+  const overlay = document.getElementById('globe-labels-overlay');
+  if (overlay) overlay.style.display = STATE.showLocationLabels ? '' : 'none';
   showToast(STATE.showLocationLabels ? '🏷 显示位置标签' : '🏷 隐藏位置标签');
 }
 
-// 切换标签层级显示
 function toggleLabelType(type) {
   STATE.labelVisibility[type] = !STATE.labelVisibility[type];
-  
-  // 更新该类型标签的显示状态
-  STATE.labelEntities.forEach(entity => {
-    if (entity.locationType === type) {
-      if (entity.label) {
-        entity.label.show = STATE.showLocationLabels && STATE.labelVisibility[type];
-      }
-      if (entity.point) {
-        entity.point.show = STATE.showLocationLabels && STATE.labelVisibility[type];
-      }
-    }
-  });
-  
-  // 更新按钮UI
-  const btn = document.getElementById('btn-label-' + type);
-  if (btn) {
-    btn.classList.toggle('active', STATE.labelVisibility[type]);
-  }
-  
-  const typeNames = {
-    country: '国家',
-    state: '省州',
-    city: '城市'
-  };
+  const typeNames = { country: '国家', state: '省州', city: '城市' };
   showToast(STATE.labelVisibility[type] ? `🏷 显示${typeNames[type]}标签` : `🏷 隐藏${typeNames[type]}标签`);
 }
 
@@ -5836,31 +5848,26 @@ function enterMainApp() {
 </script>
 
 
-<!-- ══════ 均衡器面板 ══════ -->
-<div class="eq-overlay" id="eq-overlay" onclick="if(event.target===this)closeEQPanel()">
-  <div class="eq-panel" style="position:relative;">
-    <button class="modal-close-btn" onclick="closeEQPanel()">✕</button>
-    <div class="eq-header">
-      <h3>🎛️ 音效模式</h3>
-    </div>
-    <div class="eq-presets-grid">
-      <button class="eq-preset active" onclick="applyEQPreset('flat',this)">平坦</button>
-      <button class="eq-preset" onclick="applyEQPreset('bass',this)">重低音</button>
-      <button class="eq-preset" onclick="applyEQPreset('vocal',this)">人声</button>
-      <button class="eq-preset" onclick="applyEQPreset('bright',this)">明亮</button>
-      <button class="eq-preset" onclick="applyEQPreset('rock',this)">摇滚</button>
-      <button class="eq-preset" onclick="applyEQPreset('pop',this)">流行</button>
-      <button class="eq-preset" onclick="applyEQPreset('jazz',this)">爵士</button>
-      <button class="eq-preset" onclick="applyEQPreset('classical',this)">古典</button>
-      <button class="eq-preset" onclick="applyEQPreset('electronic',this)">电子</button>
-      <button class="eq-preset" onclick="applyEQPreset('nightmode',this)">夜间</button>
-      <button class="eq-preset" onclick="applyEQPreset('spoken',this)">广播</button>
-      <button class="eq-preset" onclick="applyEQPreset('warm',this)">暖声</button>
-    </div>
-    <div class="eq-toggle-row">
-      <span class="eq-toggle-label">启用均衡器 <span class="eq-current" id="eq-current-name">平坦</span></span>
-      <button class="eq-switch" id="eq-switch" onclick="toggleEQSwitch()"></button>
-    </div>
+<!-- ══════ 均衡器下拉菜单 ══════ -->
+<div class="eq-dropdown" id="eq-dropdown" style="display:none;">
+  <div class="eq-dropdown-header">
+    <span>EQ 音效</span>
+    <span class="eq-current-name" id="eq-current-name">平坦</span>
+    <button class="eq-switch-mini" id="eq-switch" onclick="toggleEQSwitch()"></button>
+  </div>
+  <div class="eq-dropdown-presets">
+    <button class="eq-preset-mini active" onclick="applyEQPreset('flat',this)">平坦</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('bass',this)">重低音</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('vocal',this)">人声</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('bright',this)">明亮</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('rock',this)">摇滚</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('pop',this)">流行</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('jazz',this)">爵士</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('classical',this)">古典</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('electronic',this)">电子</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('nightmode',this)">夜间</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('spoken',this)">广播</button>
+    <button class="eq-preset-mini" onclick="applyEQPreset('warm',this)">暖声</button>
   </div>
 </div>
 
@@ -6491,7 +6498,7 @@ let _eqValues = [0, 0, 0, 0, 0];
 const _eqPresetNames = {flat:'平坦',bass:'重低音',vocal:'人声',bright:'明亮',rock:'摇滚',pop:'流行',jazz:'爵士',classical:'古典',electronic:'电子',nightmode:'夜间',spoken:'广播',warm:'暖声'};
 
 function applyEQPreset(name, btn) {
-  document.querySelectorAll('.eq-preset').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.eq-preset-mini').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   const presets = {
     flat:       [0, 0, 0, 0, 0],
@@ -6526,10 +6533,30 @@ function applyEQPreset(name, btn) {
   }
 }
 
-function toggleEQPanel() {
-  document.getElementById('eq-overlay').classList.toggle('show');
+function toggleEQPanel(e) {
+  const dd = document.getElementById('eq-dropdown');
+  if (dd.style.display === 'block') { dd.style.display = 'none'; return; }
+  const btn = e ? e.currentTarget : document.getElementById('eq-btn');
+  const rect = btn.getBoundingClientRect();
+  dd.style.display = 'block';
+  dd.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+  dd.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+  // 点击外部关闭
+  setTimeout(() => {
+    document.addEventListener('click', _eqOutsideClick, { once: true });
+  }, 10);
 }
-function closeEQPanel() { document.getElementById('eq-overlay').classList.remove('show'); }
+function _eqOutsideClick(e) {
+  const dd = document.getElementById('eq-dropdown');
+  const btn = document.getElementById('eq-btn');
+  if (dd && !dd.contains(e.target) && e.target !== btn) {
+    dd.style.display = 'none';
+  }
+}
+function closeEQPanel() {
+  const dd = document.getElementById('eq-dropdown');
+  if (dd) dd.style.display = 'none';
+}
 
 function toggleEQSwitch() {
   _eqEnabled = !_eqEnabled;
@@ -6621,42 +6648,60 @@ function copyShareLink() {
 }
 
 function generateSimpleQR(text) {
-  const canvas = document.getElementById('qr-canvas');
-  const ctx = canvas.getContext('2d');
-  const size = 140;
-  ctx.clearRect(0, 0, size, size);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, size, size);
+  const container = document.getElementById('qr-canvas');
+  // 清空旧的QR码
+  container.innerHTML = '';
+  container.width = 140;
+  container.height = 140;
   
-  // 简易视觉QR风格装饰（非真实QR编码，用文本hash生成图案）
-  ctx.fillStyle = '#000';
-  const cellSize = 4;
-  const grid = Math.floor(size / cellSize);
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) { hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0; }
-  const seed = Math.abs(hash);
-  
-  for (let y = 0; y < grid; y++) {
-    for (let x = 0; x < grid; x++) {
-      const v = ((seed * (x + 1) * (y + 1) + x * 31 + y * 17) % 100);
-      if (v < 38) {
-        ctx.fillRect(x * cellSize, y * cellSize, cellSize - 1, cellSize - 1);
+  if (typeof QRCode !== 'undefined') {
+    // 使用真正的QR码库生成可扫描的二维码
+    const qrDiv = document.createElement('div');
+    qrDiv.id = 'qr-real';
+    container.parentElement.replaceChild(qrDiv, container);
+    qrDiv.id = 'qr-canvas';
+    qrDiv.style.cssText = 'width:140px;height:140px;margin:0 auto;';
+    new QRCode(qrDiv, {
+      text: text,
+      width: 140,
+      height: 140,
+      colorDark: '#1a1a2e',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } else {
+    // 回退：简易视觉QR风格装饰
+    const ctx = container.getContext('2d');
+    const size = 140;
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#000';
+    const cellSize = 4;
+    const grid = Math.floor(size / cellSize);
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) { hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0; }
+    const seed = Math.abs(hash);
+    for (let y = 0; y < grid; y++) {
+      for (let x = 0; x < grid; x++) {
+        const v = ((seed * (x + 1) * (y + 1) + x * 31 + y * 17) % 100);
+        if (v < 38) {
+          ctx.fillRect(x * cellSize, y * cellSize, cellSize - 1, cellSize - 1);
+        }
       }
     }
+    function drawFinder(ox, oy) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(ox, oy, 28, 28);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(ox+4, oy+4, 20, 20);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(ox+8, oy+8, 12, 12);
+    }
+    drawFinder(4, 4);
+    drawFinder(size - 32, 4);
+    drawFinder(4, size - 32);
   }
-  
-  // 绘制三个定位标记
-  function drawFinder(ox, oy) {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(ox, oy, 28, 28);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(ox+4, oy+4, 20, 20);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(ox+8, oy+8, 12, 12);
-  }
-  drawFinder(4, 4);
-  drawFinder(size - 32, 4);
-  drawFinder(4, size - 32);
 }
 
 function closeShareModal() { document.getElementById('share-overlay').classList.remove('show'); }
@@ -6666,11 +6711,16 @@ function checkHashStation() {
   const hash = window.location.hash;
   if (hash.startsWith('#station=')) {
     const uuid = decodeURIComponent(hash.substring(9));
-    const station = STATE.stations.find(s => s.stationuuid === uuid);
-    if (station) {
-      setTimeout(() => selectStation(station), 1500);
-      window.location.hash = '';
+    function trySelect(retries) {
+      const station = STATE.stations.find(s => s.stationuuid === uuid);
+      if (station) {
+        setTimeout(() => selectStation(station), 500);
+        window.location.hash = '';
+      } else if (retries > 0) {
+        setTimeout(() => trySelect(retries - 1), 1000);
+      }
     }
+    trySelect(10);
   }
 }
 window.addEventListener('hashchange', checkHashStation);
